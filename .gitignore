@@ -1,6 +1,7 @@
 # Compiled output
 /build/bin
 /build/dist
+/tests/coverage
 
 # Node
 /node_modules

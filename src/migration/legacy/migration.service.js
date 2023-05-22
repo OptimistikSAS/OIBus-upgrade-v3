@@ -53,29 +53,18 @@ const migrateImpl = async (configVersion, config, configFilePath, logger) => {
  * Migrate if needed.
  * @param {String} configFilePath - The config file path
  * @param {Logger} logger -
- * @returns {Promise<void>} - The result promise
+ * @returns {Promise<OIBusV2Config>} - The result promise
  */
 const migrate = async (configFilePath, logger) => {
-  try {
-    let fileStat
-    try {
-      fileStat = await fs.stat(configFilePath)
-    } catch (fileNotFound) {
-      logger.error('No settings file found. No need to update')
-    }
-    if (fileStat) {
-      const config = JSON.parse(await fs.readFile(configFilePath, 'utf8'))
-      const configVersion = config.schemaVersion || DEFAULT_VERSION
-      if (configVersion < REQUIRED_SCHEMA_VERSION) {
-        logger.info(`Config file is not up-to-date. Starting migration from version ${configVersion} to ${REQUIRED_SCHEMA_VERSION}`)
-        await migrateImpl(configVersion, config, configFilePath, logger)
-      } else {
-        logger.info('Config file is up-to-date.')
-      }
-    }
-  } catch (migrationError) {
-    logger.error(`Error in migration: ${migrationError}`)
+  const config = JSON.parse(await fs.readFile(configFilePath, 'utf8'))
+  const configVersion = config.schemaVersion || DEFAULT_VERSION
+  if (configVersion < REQUIRED_SCHEMA_VERSION) {
+    logger.info(`Config file is not up-to-date. Starting migration from version ${configVersion} to ${REQUIRED_SCHEMA_VERSION}`)
+    await migrateImpl(configVersion, config, configFilePath, logger)
+  } else {
+    logger.info('Config file is up-to-date.')
   }
+  return config
 }
 
 export default migrate

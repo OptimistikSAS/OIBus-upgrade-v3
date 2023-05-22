@@ -7,6 +7,10 @@ import { NorthConnectorCommandDTO, NorthConnectorDTO } from '../model/north-conn
 import { OibFormControl } from '../model/form.model';
 import { CryptoSettings } from '../model/engine.model';
 
+export const LEGACY_PRIVATE_KEY = 'private.pem';
+export const LEGACY_PUBLIC_KEY = 'public.pem';
+export const LEGACY_KEYS_FOLDER = 'keys';
+
 export const CERT_FOLDER = 'certs';
 export const CERT_PRIVATE_KEY_FILE_NAME = 'private.pem';
 export const CERT_PUBLIC_KEY_FILE_NAME = 'public.pem';
@@ -18,7 +22,8 @@ export const CERT_FILE_NAME = 'cert.pem';
  */
 export default class EncryptionService {
   private readonly cryptoSettings: { algorithm: string; initVector: Buffer; securityKey: Buffer };
-  private readonly _certsFolder: string = '';
+  private readonly _certsFolder: string;
+  private readonly _legacyKeysFolder: string;
   private _publicKey: string | null = null;
   private _privateKey: string | null = null;
   private _certFile: string | null = null;
@@ -30,6 +35,7 @@ export default class EncryptionService {
       securityKey: Buffer.from(cryptoSettings.securityKey, 'base64')
     };
     this._certsFolder = path.resolve('./', CERT_FOLDER);
+    this._legacyKeysFolder = path.resolve('./', LEGACY_KEYS_FOLDER);
   }
 
   getCertPath(): string {
@@ -159,5 +165,27 @@ export default class EncryptionService {
     let decryptedData = decipher.update(encryptedText, 'base64', 'utf8');
     decryptedData += decipher.final('utf8');
     return decryptedData;
+  }
+
+  async legacyDecryptText(encryptedText: string): Promise<string> {
+    const absolutePath = path.resolve(this._legacyKeysFolder, LEGACY_PRIVATE_KEY);
+    const privateKey = await fs.readFile(absolutePath, 'utf8');
+    const buffer = Buffer.from(encryptedText, 'base64');
+    const decrypted = crypto.privateDecrypt(
+      {
+        key: privateKey.toString(),
+        passphrase: '',
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+      },
+      buffer
+    );
+    return decrypted.toString('utf8');
+  }
+
+  async convertCiphering(encryptedText: string): Promise<string> {
+    // Decipher with the legacy decrypt method based on RSA
+    const decryptedSecret = await this.legacyDecryptText(encryptedText);
+    // Return the secret encrypted with the new security suite
+    return await this.encryptText(decryptedSecret);
   }
 }

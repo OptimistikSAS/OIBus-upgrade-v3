@@ -26,7 +26,7 @@ export default class ProxiesMigration {
         };
         this.repositoryService.proxyRepository.createProxy(command);
       } catch (error) {
-        this.logger.error(`Error when migration proxy ${proxy}: ${error}`);
+        this.logger.error(`Error when migrating proxy ${proxy}: ${error}`);
       }
     }
   }

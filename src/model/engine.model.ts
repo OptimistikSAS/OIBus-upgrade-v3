@@ -1,7 +1,7 @@
 import { Instant } from './types';
 
 export const AUTHENTICATION_TYPES = ['none', 'basic', 'bearer', 'api-key', 'cert'];
-export type AuthenticationType = typeof AUTHENTICATION_TYPES[number];
+export type AuthenticationType = (typeof AUTHENTICATION_TYPES)[number];
 
 interface BaseAuthentication {
   type: AuthenticationType;
@@ -37,7 +37,7 @@ export interface NoAuthentication extends BaseAuthentication {
 export type Authentication = BasicAuthentication | BearerAuthentication | ApiKeyAuthentication | CertAuthentication | NoAuthentication;
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'trace'];
-export type LogLevel = typeof LOG_LEVELS[number];
+export type LogLevel = (typeof LOG_LEVELS)[number];
 
 /**
  * Base settings for log parameters

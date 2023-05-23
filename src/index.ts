@@ -9,6 +9,7 @@ import ExternalSourcesMigration from './migration/external-sources.migration';
 import IPFiltersMigration from './migration/ip-filters.migration';
 import ProxiesMigration from './migration/proxies.migration';
 import EncryptionService from './service/encryption.service';
+import EngineMigration from './migration/engine.migration';
 
 const CONFIG_FILE_NAME = 'oibus.json';
 const CONFIG_DATABASE = 'oibus.db';
@@ -71,10 +72,11 @@ const CRYPTO_DATABASE = 'crypto.db';
   const proxiesMigration = new ProxiesMigration(repositoryService, loggerService.logger!, encryptionService);
   await proxiesMigration.migrate(config.engine.proxies);
 
+  const engineMigration = new EngineMigration(repositoryService, loggerService.logger!, encryptionService);
+  await engineMigration.migrate(config.engine);
+
   //TODO migrate to v3 here
   // Scan mode
-  // Health signal
-  // Engine settings
   // North
   // South
   // User

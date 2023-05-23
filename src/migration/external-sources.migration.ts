@@ -16,7 +16,7 @@ export default class ExternalSourcesMigration {
         };
         this.repositoryService.externalSourceRepository.createExternalSource(command);
       } catch (error) {
-        this.logger.error(`Error when migration external source ${externalSource}: ${error}`);
+        this.logger.error(`Error when migrating external source ${externalSource}: ${error}`);
       }
     }
   }

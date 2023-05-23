@@ -19,22 +19,25 @@ export type NorthTypeV2 = (typeof NORTH_TYPES_V2)[number];
 export const SOUTH_TYPES_V2 = ['ADS', 'FolderScanner', 'Modbus', 'MQTT', 'OPCHDA', 'OPCUA_DA', 'OPCUA_HA', 'RestApi', 'SQL'];
 export type SouthTypeV2 = (typeof SOUTH_TYPES_V2)[number];
 
+export const LOG_LEVEL_V2 = ['trace', 'debug', 'info', 'warning', 'error', 'none'];
+export type LogLevelV2 = (typeof LOG_LEVEL_V2)[number];
+
 export interface LogParametersV2 {
   consoleLog: {
-    level: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'none';
+    level: LogLevelV2;
   };
   fileLog: {
-    level: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'none';
+    level: LogLevelV2;
     maxSize: number;
     numberOfFile: number;
     tailable: boolean;
   };
   sqliteLog: {
-    level: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'none';
+    level: LogLevelV2;
     maxNumberOfLogs: number;
   };
   lokiLog: {
-    level: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'none';
+    level: LogLevelV2;
     lokiAddress: string;
     interval: number;
     password: string;

@@ -34,12 +34,10 @@ runs:
 
     - name: Remove cache version
       shell: bash
-      working-directory: backend
       run: rm cache_version
 
     - name: Install dependencies
       shell: bash
-      working-directory: backend
       if: steps.cached-node-modules-dependencies.outputs.cache-hit != 'true'
       run: npm ci
 

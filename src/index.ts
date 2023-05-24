@@ -10,6 +10,7 @@ import IPFiltersMigration from './migration/ip-filters.migration';
 import ProxiesMigration from './migration/proxies.migration';
 import EncryptionService from './service/encryption.service';
 import EngineMigration from './migration/engine.migration';
+import UserMigration from './migration/user.migration';
 
 const CONFIG_FILE_NAME = 'oibus.json';
 const CONFIG_DATABASE = 'oibus.db';
@@ -75,11 +76,13 @@ const CRYPTO_DATABASE = 'crypto.db';
   const engineMigration = new EngineMigration(repositoryService, loggerService.logger!, encryptionService);
   await engineMigration.migrate(config.engine);
 
+  const userMigration = new UserMigration(repositoryService, loggerService.logger!, encryptionService);
+  await userMigration.migrate(config.engine.user, config.engine.password);
+
   //TODO migrate to v3 here
   // Scan mode
   // North
   // South
-  // User
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

@@ -22,7 +22,7 @@ export default class IPFiltersMigration {
         };
         this.repositoryService.ipFilterRepository.createIpFilter(command);
       } catch (error) {
-        this.logger.error(`Error when migrating IP filter ${ipFilter}: ${error}`);
+        this.logger.error(`Error when migrating IP filter "${ipFilter}": ${error}`);
       }
     }
   }

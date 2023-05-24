@@ -66,7 +66,7 @@ export default class EngineMigration {
       };
       this.repositoryService.engineRepository.updateEngineSettings(command);
     } catch (error) {
-      this.logger.error(`Error when migrating engine settings of ${engine.name}: ${error}`);
+      this.logger.error(`Error when migrating engine settings of "${engine.name}": ${error}`);
     }
   }
 }

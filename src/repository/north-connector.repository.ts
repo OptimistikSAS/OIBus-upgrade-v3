@@ -98,8 +98,7 @@ export default class NorthConnectorRepository {
   /**
    * Create a North connector with a random generated ID
    */
-  createNorthConnector(command: NorthConnectorCommandDTO): NorthConnectorDTO {
-    const id = generateRandomId(6);
+  createNorthConnector(command: NorthConnectorCommandDTO, id = generateRandomId(6)): NorthConnectorDTO {
     const insertQuery =
       `INSERT INTO ${NORTH_CONNECTOR_TABLE} (id, name, type, description, enabled, settings, ` +
       `caching_scan_mode_id, caching_group_count, caching_retry_interval, caching_retry_count, caching_max_send_count, ` +

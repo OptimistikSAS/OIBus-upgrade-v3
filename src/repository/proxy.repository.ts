@@ -1,6 +1,8 @@
 import { generateRandomId } from '../service/utils';
 import { ProxyCommandDTO, ProxyDTO } from '../model/proxy.model';
 import { Database } from 'better-sqlite3';
+import { ScanModeDTO } from '../model/scan-mode.model';
+import { SCAN_MODE_TABLE } from './scan-mode.repository';
 
 export const PROXY_TABLE = 'proxy';
 
@@ -31,6 +33,20 @@ export default class ProxyRepository {
   getProxy(id: string): ProxyDTO | null {
     const query = `SELECT id, name, description, address, username, password FROM ${PROXY_TABLE} WHERE id = ?;`;
     return this.database.prepare(query).get(id) as ProxyDTO | null;
+  }
+
+  getByName(name: string): ProxyDTO | null {
+    const query = `SELECT id, name, description, address, username, password FROM ${PROXY_TABLE} WHERE name = ?;`;
+    const result: ProxyDTO | null = this.database.prepare(query).get(name) as ProxyDTO | null;
+    if (!result) return null;
+    return {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      address: result.address,
+      username: result.username,
+      password: result.password
+    };
   }
 
   /**

@@ -94,8 +94,7 @@ export default class SouthItemRepository {
   /**
    * Create a South item with a random generated ID
    */
-  createSouthItem(southId: string, command: OibusItemCommandDTO): OibusItemDTO {
-    const id = generateRandomId(6);
+  createSouthItem(southId: string, command: OibusItemCommandDTO, id = generateRandomId(6)): OibusItemDTO {
     const insertQuery = `INSERT INTO ${SOUTH_ITEM_TABLE} (id, name, connector_id, scan_mode_id, settings) ` + `VALUES (?, ?, ?, ?, ?);`;
     const insertResult = this.database
       .prepare(insertQuery)

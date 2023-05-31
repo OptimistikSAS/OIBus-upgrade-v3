@@ -73,8 +73,7 @@ export default class SouthConnectorRepository {
   /**
    * Create a South connector with a random generated ID
    */
-  createSouthConnector(command: SouthConnectorCommandDTO): SouthConnectorDTO {
-    const id = generateRandomId(6);
+  createSouthConnector(command: SouthConnectorCommandDTO, id = generateRandomId(6)): SouthConnectorDTO {
     const insertQuery =
       `INSERT INTO ${SOUTH_CONNECTOR_TABLE} (id, name, type, description, enabled, history_max_instant_per_item, history_max_read_interval, history_read_delay, settings) ` +
       `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`;

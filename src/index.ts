@@ -11,6 +11,10 @@ import ProxiesMigration from './migration/proxies.migration';
 import EncryptionService from './service/encryption.service';
 import EngineMigration from './migration/engine.migration';
 import UserMigration from './migration/user.migration';
+import ScanModesMigration from './migration/scan-modes.migration';
+import NorthMigration from './migration/north.migration';
+import SouthMigration from './migration/south.migration';
+import SouthItemsMigration from './migration/south-items.migration';
 
 const CONFIG_FILE_NAME = 'oibus.json';
 const CONFIG_DATABASE = 'oibus.db';
@@ -79,10 +83,21 @@ const CRYPTO_DATABASE = 'crypto.db';
   const userMigration = new UserMigration(repositoryService, loggerService.logger!, encryptionService);
   await userMigration.migrate(config.engine.user, config.engine.password);
 
-  //TODO migrate to v3 here
-  // Scan mode
-  // North
-  // South
+  const scanModeMigration = new ScanModesMigration(repositoryService, loggerService.logger!);
+  await scanModeMigration.migrate(config.engine.scanModes);
+
+  const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
+  await northMigration.migrate(config.north);
+
+  const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
+  await southMigration.migrate(config.south);
+
+  const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!, encryptionService);
+  for (const south of config.south) {
+    await itemMigration.migrate(south);
+  }
+
+  // Reminder : migrate proxy from 'name' to ID
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

@@ -40,6 +40,18 @@ export default class ScanModeRepository {
     return this.database.prepare(query).get(id) as ScanModeDTO | null;
   }
 
+  getByName(name: string): ScanModeDTO | null {
+    const query = `SELECT id, name, description, cron FROM ${SCAN_MODE_TABLE} WHERE name = ?;`;
+    const result: ScanModeDTO | null = this.database.prepare(query).get(name) as ScanModeDTO | null;
+    if (!result) return null;
+    return {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      cron: result.cron
+    };
+  }
+
   /**
    * Create a scan mode with a random generated ID
    */

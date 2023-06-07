@@ -1,11 +1,8 @@
 import RepositoryService from '../service/repository.service';
-import { ExternalSourceCommandDTO } from '../model/external-sources.model';
 import pino from 'pino';
-import { ProxyCommandDTO } from '../model/proxy.model';
-import { NorthV2, ProxyV2, SouthV2 } from '../model/config.model';
+import { SouthV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
-import { NorthConnectorCommandDTO } from '../model/north-connector.model';
-import { intervalToCron, migrateNorthSettings, migrateSouthSettings } from './utils';
+import { convertSouthType, migrateSouthSettings } from './utils';
 import { SouthConnectorCommandDTO } from '../model/south-connector.model';
 
 export default class SouthMigration {
@@ -18,17 +15,17 @@ export default class SouthMigration {
   async migrate(connectors: Array<SouthV2> = []): Promise<void> {
     this.logger.info(`Migrating ${connectors.length} South connectors`);
     for (const connector of connectors) {
-      this.logger.trace(`Migrating South "${connector.name}"`);
+      this.logger.debug(`Migrating South "${connector.name}" of type ${connector.type}`);
       try {
         const command: SouthConnectorCommandDTO = {
           name: connector.name,
           description: '',
-          type: connector.type,
+          type: convertSouthType(connector.type, connector.settings),
           enabled: connector.enabled,
           history: {
-            maxInstantPerItem: false,
+            maxInstantPerItem: connector.type !== 'OPCUA_HA' && connector.type !== 'OPCHDA',
             maxReadInterval: connector.settings.maxReadInterval || 60,
-            readDelay: connector.settings.readDelay || 200
+            readDelay: connector.settings.readIntervalDelay || 200
           },
           settings: migrateSouthSettings(connector, this.repositoryService.proxyRepository, this.encryptionService, this.logger)
         };

@@ -1,11 +1,9 @@
 import RepositoryService from '../service/repository.service';
-import { ExternalSourceCommandDTO } from '../model/external-sources.model';
 import pino from 'pino';
-import { ProxyCommandDTO } from '../model/proxy.model';
-import { NorthV2, ProxyV2 } from '../model/config.model';
+import { NorthV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
 import { NorthConnectorCommandDTO } from '../model/north-connector.model';
-import { intervalToCron, migrateNorthSettings } from './utils';
+import { convertNorthType, intervalToCron, migrateNorthSettings } from './utils';
 
 export default class NorthMigration {
   constructor(
@@ -22,7 +20,7 @@ export default class NorthMigration {
         const command: NorthConnectorCommandDTO = {
           name: connector.name,
           description: '',
-          type: connector.type,
+          type: convertNorthType(connector.type),
           enabled: connector.enabled,
           caching: {
             scanModeId: intervalToCron(connector.caching.sendInterval, this.repositoryService.scanModeRepository),
@@ -37,7 +35,7 @@ export default class NorthMigration {
             enabled: connector.caching.archive.enabled,
             retentionDuration: connector.caching.archive.retentionDuration
           },
-          settings: migrateNorthSettings(connector.settings, this.repositoryService.proxyRepository, this.encryptionService, this.logger)
+          settings: migrateNorthSettings(connector, this.repositoryService.proxyRepository, this.encryptionService, this.logger)
         };
         this.repositoryService.northConnectorRepository.createNorthConnector(command, connector.id);
       } catch (error) {

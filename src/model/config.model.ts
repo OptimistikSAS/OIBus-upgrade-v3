@@ -137,6 +137,7 @@ export interface SouthV2 {
   name: string;
   type: SouthTypeV2;
   enabled: boolean;
+  scanMode: string;
   settings: any;
   points: Array<ItemV2>;
 }

@@ -92,12 +92,10 @@ const CRYPTO_DATABASE = 'crypto.db';
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
   await southMigration.migrate(config.south);
 
-  const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!, encryptionService);
+  const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!);
   for (const south of config.south) {
     await itemMigration.migrate(south);
   }
-
-  // Reminder : migrate proxy from 'name' to ID
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

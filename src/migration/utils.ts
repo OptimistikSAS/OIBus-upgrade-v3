@@ -377,7 +377,6 @@ const migrateSQL = async (connector: SouthV2, encryptionService: EncryptionServi
   switch (connector.settings.driver) {
     case 'mssql':
       return {
-        driver: connector.settings.driver,
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -385,58 +384,58 @@ const migrateSQL = async (connector: SouthV2, encryptionService: EncryptionServi
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         domain: connector.settings.domain,
         encryption: connector.settings.encryption,
+        trustServerCertificate: connector.settings.selfSigned,
         connectionTimeout: connector.settings.connectionTimeout,
         compression: connector.settings.compression
       };
     case 'mysql':
       return {
-        driver: connector.settings.driver,
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
+        requestTimeout: connector.settings.requestTimeout,
         compression: connector.settings.compression
       };
     case 'postgresql':
       return {
-        driver: connector.settings.driver,
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
+        requestTimeout: connector.settings.requestTimeout,
         compression: connector.settings.compression
       };
     case 'oracle':
       return {
-        driver: connector.settings.driver,
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
+        connectionTimeout: connector.settings.connectionTimeout,
+        requestTimeout: connector.settings.requestTimeout,
         compression: connector.settings.compression
       };
     case 'sqlite':
       return {
-        driver: connector.settings.driver,
         databasePath: connector.settings.databasePath,
         compression: connector.settings.compression
       };
     case 'odbc':
       return {
-        driver: connector.settings.driver,
+        driverPath: connector.settings.odbcDriverPath,
         host: connector.settings.host,
-        selfSigned: connector.settings.selfSigned,
-        odbcDriverPath: connector.settings.odbcDriverPath,
         port: connector.settings.port,
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
+        trustServerCertificate: connector.settings.selfSigned,
         compression: connector.settings.compression
       };
     default:

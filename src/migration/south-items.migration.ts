@@ -73,21 +73,113 @@ export default class SouthItemsMigration {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return;
     }
-    const command: OibusItemCommandDTO = {
-      name: southConnector.name,
-      scanModeId: scanMode.id,
-      settings: {
-        query: southConnector.settings.query,
-        datetimeType: 'isostring',
-        requestTimeout: southConnector.settings.requestTimeout,
-        filename: southConnector.settings.filename,
-        delimiter: southConnector.settings.delimiter,
-        dateFormat: southConnector.settings.dateFormat,
-        timeField: southConnector.settings.timeColumn,
-        timezone: southConnector.settings.timezone
-      }
-    };
-    this.repositoryService.southItemRepository.createSouthItem(southConnector.id, command);
+
+    switch (southConnector.settings.driver) {
+      case 'mssql':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'string',
+              timezone: southConnector.settings.timezone,
+              field: southConnector.settings.timeColumn,
+              format: southConnector.settings.dateFormat,
+              locale: 'en-US'
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      case 'mysql':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'string',
+              timezone: southConnector.settings.timezone,
+              field: southConnector.settings.timeColumn,
+              format: southConnector.settings.dateFormat,
+              locale: 'en-US'
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      case 'postgresql':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'string',
+              timezone: southConnector.settings.timezone,
+              field: southConnector.settings.timeColumn,
+              format: southConnector.settings.dateFormat,
+              locale: 'en-US'
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      case 'oracle':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'string',
+              timezone: southConnector.settings.timezone,
+              field: southConnector.settings.timeColumn,
+              format: southConnector.settings.dateFormat,
+              locale: 'en-US'
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      case 'sqlite':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'number',
+              field: southConnector.settings.timeColumn
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      case 'odbc':
+        this.repositoryService.southItemRepository.createSouthItem(southConnector.id, {
+          name: southConnector.name,
+          scanModeId: scanMode.id,
+          settings: {
+            query: southConnector.settings.query,
+            dateTimeFormat: {
+              type: 'number',
+              field: southConnector.settings.timeColumn
+            },
+            filename: southConnector.settings.filename,
+            delimiter: southConnector.settings.delimiter
+          }
+        });
+        break;
+      default:
+        break;
+    }
   };
 
   createRestApiItem = async (southConnector: SouthV2) => {

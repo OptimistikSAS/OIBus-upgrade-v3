@@ -7,7 +7,7 @@ export type Timezone = string;
 export const DEFAULT_TZ: Timezone = 'Europe/Paris';
 
 export const LANGUAGES = ['fr', 'en'];
-export type Language = typeof LANGUAGES[number];
+export type Language = (typeof LANGUAGES)[number];
 
 export interface Page<T> {
   /**
@@ -49,3 +49,28 @@ export interface Interval {
   start: Instant;
   end: Instant;
 }
+
+export const DATE_TIME_TYPES = ['string', 'datetime', 'number'];
+export type DateTimeType = (typeof DATE_TIME_TYPES)[number];
+
+interface BaseDateTimeFormat {
+  type: DateTimeType;
+  timezone: string;
+  field: string;
+}
+
+export interface StringDateTimeFormat extends BaseDateTimeFormat {
+  type: 'string';
+  format: string;
+  locale: string;
+}
+
+export interface ObjectDateTimeFormat extends BaseDateTimeFormat {
+  type: 'datetime';
+}
+
+export interface NumberDateTimeFormat extends BaseDateTimeFormat {
+  type: 'number';
+}
+
+export type DateTimeFormat = StringDateTimeFormat | ObjectDateTimeFormat | NumberDateTimeFormat;

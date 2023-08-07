@@ -66,14 +66,15 @@ jobs:
 
   build-binaries:
     needs: standard-version
-    name: Build on ${{ matrix.config['os'] }}
+    name: Build for ${{ matrix.config['friendlyName'] }}
     runs-on: ${{ matrix.config['os'] }}
     strategy:
       matrix:
         config:
-          - { os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-macos.zip', zip: 'zip -r' }
-          - { os: 'windows-latest', platform: 'win',   archiveName: 'oibus-win32x64.zip', zip: '7z a -tzip' }
-          - { os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-linux.tar.gz', zip: 'tar -czvf' }
+          - { friendlyName: 'Mac OS x64', os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-macos.zip', zip: 'zip -r' }
+          - { friendlyName: 'Windows x64', os: 'windows-latest', platform: 'win',   archiveName: 'oibus-win32x64.zip', zip: '7z a -tzip' }
+          - { friendlyName: 'Linux x64', os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-linux.tar.gz', zip: 'tar -czvf' }
+          - { friendlyName: 'Linux ARM64', os: 'ubuntu-latest',  platform: 'linux-arm64', archiveName: 'oibus-linux-arm64.tar.gz', zip: 'tar -czvf' }
     timeout-minutes: 20
 
     steps:
@@ -87,14 +88,43 @@ jobs:
         with:
           cache_version: ${{ secrets.GH_ACTIONS_CACHE_KEY }}
 
-      - name: Bundle backend
-        run: npm run build
+      - name: Build OIBus for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] != 'linux-arm64' }}
+        run: npm run build:${{ matrix.config['platform'] }}
 
-      - name: Package OIBus for ${{ matrix.config['platform'] }}
+      - name: Pre build OIBus library for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] == 'linux-arm64' }}
         run: |
-          npm run build:${{ matrix.config['platform'] }}
+          npm run build
+          npm run internal:build:lib-linux-arm64
+
+      - name: Build OIBus for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] == 'linux-arm64' }}
+        id: pkg-action
+        uses: lando/pkg-action@v2
+        with:
+          entrypoint: ./build/dist/index.js
+          arch: 'arm64'
+          os: linux
+          config: package.json
+          options: --public --compress GZip
+          node-version: node18
+
+      - name: Post build OIBus library for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] == 'linux-arm64' }}
+        run: |
+          mkdir -p build/bin/${{ matrix.config['platform'] }}
+          cp ${{ steps.pkg-action.outputs.file }} build/bin/linux-arm64/oibus
+
+      - name: Test OIBus run for ${{ matrix.config['friendlyName'] }}
+        if: ${{ matrix.config['platform'] != 'linux-arm64' }}
+        run: |
           cd ./build/bin/${{ matrix.config['platform'] }}
           ./oibus --config ../../../data-folder --check true
+
+      - name: Package OIBus for ${{ matrix.config['friendlyName'] }}
+        run: |
+          cd build/bin/${{ matrix.config['platform'] }}
           ${{ matrix.config['zip'] }} ../${{ matrix.config['archiveName'] }} .
 
       - name: Upload artifact ${{ matrix.config['archiveName'] }}
@@ -123,7 +153,9 @@ jobs:
           prerelease: ${{ needs.standard-version.outputs.prerelease }}
           files: |
             ./artifact/oibus-linux.tar.gz
+            ./artifact/oibus-linux-arm64.tar.gz
             ./artifact/oibus-macos.zip
+            ./artifact/oibus-macos-arm64.zip
             ./artifact/oibus-win32x64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }} # Need REPO_ACCESS_TOKEN to propagate 'release published' event

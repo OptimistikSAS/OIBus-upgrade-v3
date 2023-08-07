@@ -21,14 +21,14 @@ describe('Service utils', () => {
     (minimist as unknown as jest.Mock).mockReturnValue({});
     const result = utils.getCommandLineArguments();
 
-    expect(result).toEqual({ dataFolder: path.resolve('./') });
+    expect(result).toEqual({ dataFolder: path.resolve('./'), check: false });
   });
 
   it('should parse command line arguments with args', () => {
-    (minimist as unknown as jest.Mock).mockReturnValue({ config: 'myConfig' });
+    (minimist as unknown as jest.Mock).mockReturnValue({ config: 'myConfig', check: true });
     const result = utils.getCommandLineArguments();
 
-    expect(result).toEqual({ dataFolder: path.resolve('myConfig') });
+    expect(result).toEqual({ dataFolder: path.resolve('myConfig'), check: true });
   });
 
   it('should delay', async () => {

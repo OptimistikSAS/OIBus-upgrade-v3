@@ -25,10 +25,15 @@ const LOG_FOLDER_NAME = 'logs';
 const LOG_DB_NAME = 'journal.db';
 
 (async () => {
-  const { dataFolder } = getCommandLineArguments();
+  const { dataFolder, check } = getCommandLineArguments();
 
   const baseDir = dataFolder;
   process.chdir(baseDir);
+
+  if (check) {
+    console.info('OIBus migration started in check mode. Exiting process.');
+    return;
+  }
 
   const loggerService = new LoggerService();
   await loggerService.start();

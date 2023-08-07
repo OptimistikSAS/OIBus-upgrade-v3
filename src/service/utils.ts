@@ -9,8 +9,8 @@ import minimist from 'minimist';
  */
 const getCommandLineArguments = () => {
   const args = minimist(process.argv.slice(2));
-  const { config = './' } = args;
-  return { dataFolder: path.resolve(config) };
+  const { config = './', check = false } = args;
+  return { dataFolder: path.resolve(config), check };
 };
 
 /**

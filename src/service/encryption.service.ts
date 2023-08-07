@@ -1,11 +1,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-
-import { SouthConnectorCommandDTO, SouthConnectorDTO } from '../model/south-connector.model';
-import { NorthConnectorCommandDTO, NorthConnectorDTO } from '../model/north-connector.model';
 import { OibFormControl } from '../model/form.model';
 import { CryptoSettings } from '../model/engine.model';
+import { SouthSettings } from '../model/south-settings.model';
+import { NorthSettings } from '../model/north-settings.model';
 
 export const LEGACY_PRIVATE_KEY = 'private.pem';
 export const LEGACY_PUBLIC_KEY = 'public.pem';
@@ -75,7 +74,7 @@ export default class EncryptionService {
     newSettings: any,
     oldSettings: any,
     formSettings: Array<OibFormControl>
-  ): Promise<SouthConnectorCommandDTO | NorthConnectorCommandDTO> {
+  ): Promise<SouthSettings | NorthSettings> {
     const encryptedSettings: any = JSON.parse(JSON.stringify(newSettings));
     for (const fieldSettings of formSettings) {
       if (fieldSettings.type === 'OibSecret') {
@@ -84,59 +83,35 @@ export default class EncryptionService {
         } else {
           encryptedSettings[fieldSettings.key] = oldSettings ? oldSettings[fieldSettings.key] || '' : '';
         }
-      } else if (fieldSettings.type === 'OibAuthentication') {
-        switch (encryptedSettings[fieldSettings.key].type) {
-          case 'api-key':
-            encryptedSettings[fieldSettings.key].secret = encryptedSettings[fieldSettings.key].secret
-              ? await this.encryptText(encryptedSettings[fieldSettings.key].secret)
-              : oldSettings
-              ? oldSettings[fieldSettings.key].secret || ''
-              : '';
-            break;
-          case 'bearer':
-            encryptedSettings[fieldSettings.key].token = encryptedSettings[fieldSettings.key].token
-              ? await this.encryptText(encryptedSettings[fieldSettings.key].token)
-              : oldSettings
-              ? oldSettings[fieldSettings.key].token || ''
-              : '';
-            break;
-          case 'basic':
-            encryptedSettings[fieldSettings.key].password = encryptedSettings[fieldSettings.key].password
-              ? await this.encryptText(encryptedSettings[fieldSettings.key].password)
-              : oldSettings
-              ? oldSettings[fieldSettings.key].password || ''
-              : '';
-            break;
-          case 'none':
-          case 'cert':
-          default:
-            break;
+      } else if (fieldSettings.type === 'OibArray') {
+        for (let i = 0; i < encryptedSettings[fieldSettings.key].length; i++) {
+          encryptedSettings[fieldSettings.key][i] = await this.encryptConnectorSecrets(
+            encryptedSettings[fieldSettings.key][i],
+            oldSettings ? oldSettings[fieldSettings.key] || null : null,
+            fieldSettings.content
+          );
         }
+      } else if (fieldSettings.type === 'OibFormGroup') {
+        encryptedSettings[fieldSettings.key] = await this.encryptConnectorSecrets(
+          encryptedSettings[fieldSettings.key],
+          oldSettings ? oldSettings[fieldSettings.key] || null : null,
+          fieldSettings.content
+        );
       }
     }
     return encryptedSettings;
   }
 
-  filterSecrets(connectorSettings: any, formSettings: Array<OibFormControl>): SouthConnectorDTO | NorthConnectorDTO {
+  filterSecrets(connectorSettings: any, formSettings: Array<OibFormControl>): SouthSettings | NorthSettings {
     for (const fieldSettings of formSettings) {
       if (fieldSettings.type === 'OibSecret') {
         connectorSettings[fieldSettings.key] = '';
-      } else if (fieldSettings.type === 'OibAuthentication') {
-        switch (connectorSettings[fieldSettings.key].type) {
-          case 'api-key':
-            connectorSettings[fieldSettings.key].secret = '';
-            break;
-          case 'bearer':
-            connectorSettings[fieldSettings.key].token = '';
-            break;
-          case 'basic':
-            connectorSettings[fieldSettings.key].password = '';
-            break;
-          case 'none':
-          case 'cert':
-          default:
-            break;
+      } else if (fieldSettings.type === 'OibArray') {
+        for (let i = 0; i < connectorSettings[fieldSettings.key].length; i++) {
+          connectorSettings[fieldSettings.key][i] = this.filterSecrets(connectorSettings[fieldSettings.key][i], fieldSettings.content);
         }
+      } else if (fieldSettings.type === 'OibFormGroup') {
+        this.filterSecrets(connectorSettings[fieldSettings.key], fieldSettings.content);
       }
     }
     return connectorSettings;

@@ -29,6 +29,14 @@ export default class ExternalSourceRepository {
   /**
    * Retrieve an external source by its reference
    */
+  getExternalSourceByReference(reference: string): ExternalSourceDTO | null {
+    const query = `SELECT id, reference, description FROM ${EXTERNAL_SOURCES_TABLE} WHERE reference = ?;`;
+    return this.database.prepare(query).get(reference) as ExternalSourceDTO | null;
+  }
+
+  /**
+   * Retrieve an external source by its reference
+   */
   findExternalSourceByReference(reference: string): ExternalSourceDTO | null {
     const query = `SELECT id, reference, description FROM ${EXTERNAL_SOURCES_TABLE} WHERE reference = ?;`;
     return this.database.prepare(query).get(reference) as ExternalSourceDTO | null;

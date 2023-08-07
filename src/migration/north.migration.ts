@@ -38,6 +38,17 @@ export default class NorthMigration {
           settings: migrateNorthSettings(connector, this.encryptionService, this.logger, proxies)
         };
         this.repositoryService.northConnectorRepository.createNorthConnector(command, connector.id);
+
+        for (const subscription of connector.subscribedTo) {
+          if (this.repositoryService.southConnectorRepository.getSouthConnector(subscription)) {
+            this.repositoryService.subscriptionRepository.createNorthSubscription(connector.id, subscription);
+          } else {
+            const externalSource = this.repositoryService.externalSourceRepository.getExternalSourceByReference(subscription);
+            if (externalSource) {
+              this.repositoryService.subscriptionRepository.createExternalNorthSubscription(connector.id, externalSource.id);
+            }
+          }
+        }
       } catch (error) {
         this.logger.error(`Error when migrating North "${JSON.stringify(connector)}": ${error}`);
       }

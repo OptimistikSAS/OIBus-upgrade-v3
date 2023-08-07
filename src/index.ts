@@ -92,9 +92,6 @@ const LOG_DB_NAME = 'journal.db';
   const scanModeMigration = new ScanModesMigration(repositoryService, loggerService.logger!);
   await scanModeMigration.migrate(config.engine.scanModes);
 
-  const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await northMigration.migrate(config.north, config.engine.proxies);
-
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
   await southMigration.migrate(config.south, config.engine.proxies);
 
@@ -102,6 +99,9 @@ const LOG_DB_NAME = 'journal.db';
   for (const south of config.south) {
     await itemMigration.migrate(south);
   }
+
+  const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
+  await northMigration.migrate(config.north, config.engine.proxies);
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

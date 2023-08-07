@@ -1,3 +1,5 @@
+import { OibFormControl } from './form.model';
+
 export type Instant = string;
 export type LocalDate = string;
 export type LocalTime = string;
@@ -8,6 +10,12 @@ export const DEFAULT_TZ: Timezone = 'Europe/Paris';
 
 export const LANGUAGES = ['fr', 'en'];
 export type Language = (typeof LANGUAGES)[number];
+
+export interface BaseEntity {
+  id: string;
+  creationDate?: Instant;
+  lastEditInstant?: Instant;
+}
 
 export interface Page<T> {
   /**
@@ -50,27 +58,41 @@ export interface Interval {
   end: Instant;
 }
 
-export const DATE_TIME_TYPES = ['string', 'datetime', 'number'];
+export const DATE_TIME_TYPES = [
+  'iso-string',
+  'unix-epoch',
+  'unix-epoch-ms',
+  'string',
+  'Date',
+  'SmallDateTime',
+  'DateTime',
+  'DateTime2',
+  'DateTimeOffset',
+  'timestamp',
+  'timestamptz'
+] as const;
 export type DateTimeType = (typeof DATE_TIME_TYPES)[number];
 
-interface BaseDateTimeFormat {
-  type: DateTimeType;
-  timezone: string;
-  field: string;
+export const ALL_CSV_CHARACTERS = ['DOT', 'SEMI_COLON', 'COLON', 'COMMA', 'NON_BREAKING_SPACE', 'SLASH', 'TAB', 'PIPE'] as const;
+
+export type CsvCharacter = (typeof ALL_CSV_CHARACTERS)[number];
+
+export const SERIALIZATION_TYPES = ['csv', 'json'];
+export type SerializationType = (typeof SERIALIZATION_TYPES)[number];
+
+export interface SerializationSettings {
+  type: SerializationType;
+  outputTimestampFormat: string;
+  outputTimezone: Timezone;
+  filename: string;
+  compression: boolean;
+  delimiter: CsvCharacter;
 }
 
-export interface StringDateTimeFormat extends BaseDateTimeFormat {
-  type: 'string';
-  format: string;
-  locale: string;
+export interface ConnectorManifest {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  settings: Array<OibFormControl>;
 }
-
-export interface ObjectDateTimeFormat extends BaseDateTimeFormat {
-  type: 'datetime';
-}
-
-export interface NumberDateTimeFormat extends BaseDateTimeFormat {
-  type: 'number';
-}
-
-export type DateTimeFormat = StringDateTimeFormat | ObjectDateTimeFormat | NumberDateTimeFormat;

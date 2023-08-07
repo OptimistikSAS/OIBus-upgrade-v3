@@ -1,5 +1,6 @@
 import { OibFormControl } from './form.model';
-import { Instant } from './types';
+import { BaseEntity, Instant } from './types';
+import { NorthSettings } from './north-settings.model';
 
 export interface NorthCacheSettingsDTO {
   scanModeId: string;
@@ -17,8 +18,9 @@ export interface NorthArchiveSettings {
 }
 
 export interface NorthType {
+  id: string;
   category: string;
-  type: string;
+  name: string;
   description: string;
   modes: {
     files: boolean;
@@ -29,13 +31,12 @@ export interface NorthType {
 /**
  * DTO for North connectors
  */
-export interface NorthConnectorDTO {
-  id: string;
+export interface NorthConnectorDTO<T extends NorthSettings = any> extends BaseEntity {
   name: string;
   type: string;
   description: string;
   enabled: boolean;
-  settings: any;
+  settings: T;
   caching: NorthCacheSettingsDTO;
   archive: NorthArchiveSettings;
 }
@@ -43,17 +44,18 @@ export interface NorthConnectorDTO {
 /**
  * Command DTO for North connector
  */
-export interface NorthConnectorCommandDTO {
+export interface NorthConnectorCommandDTO<T extends NorthSettings = any> {
   name: string;
   type: string;
   description: string;
   enabled: boolean;
-  settings: object;
+  settings: T;
   caching: NorthCacheSettingsDTO;
   archive: NorthArchiveSettings;
 }
 
 export interface NorthConnectorManifest {
+  id: string;
   category: string;
   name: string;
   description: string;
@@ -69,3 +71,5 @@ export interface NorthCacheFiles {
   modificationDate: Instant;
   size: number;
 }
+
+export interface NorthArchiveFiles extends NorthCacheFiles {}

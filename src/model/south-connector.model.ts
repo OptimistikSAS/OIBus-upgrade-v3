@@ -1,9 +1,11 @@
 import { OibFormControl } from './form.model';
-import { Instant } from './types';
+import { BaseEntity, Instant } from './types';
+import { SouthSettings, SouthItemSettings } from './south-settings.model';
 
 export interface SouthType {
+  id: string;
   category: string;
-  type: string;
+  name: string;
   description: string;
   modes: {
     subscription: boolean;
@@ -22,54 +24,62 @@ export interface SouthConnectorHistorySettings {
 /**
  * DTO for South connectors
  */
-export interface SouthConnectorDTO {
-  id: string;
+export interface SouthConnectorDTO<T extends SouthSettings = any> extends BaseEntity {
   name: string;
   type: string;
   description: string;
   enabled: boolean;
-  settings: any;
+  settings: T;
   history: SouthConnectorHistorySettings;
 }
 
 /**
  * Command DTO for South connector
  */
-export interface SouthConnectorCommandDTO {
+export interface SouthConnectorCommandDTO<T = any> {
   name: string;
   type: string;
   description: string;
   enabled: boolean;
   history: SouthConnectorHistorySettings;
-  settings: any;
+  settings: T;
 }
 
 /**
- * DTO used for South scan (a point/query/regexp and its settings linked to a scan mode)
+ * Command DTO for South connector
  */
-export interface OibusItemDTO {
-  id: string;
+export interface SouthConnectorCreationCommandDTO<> {
+  south: SouthConnectorDTO;
+  items: Array<SouthConnectorItemDTO>;
+}
+
+/**
+ * DTO used for an item to query within a south
+ */
+export interface SouthConnectorItemDTO<T extends SouthItemSettings = any> extends BaseEntity {
   name: string;
+  enabled: boolean;
   connectorId: string;
-  settings: any;
-  scanModeId?: string;
+  settings: T;
+  scanModeId: string;
 }
 
 /**
- * Command DTO used for South scan (a point/query/folder and its settings linked to a scan mode)
+ * Command DTO used to create an SouthConnectorItem
  */
-export interface OibusItemCommandDTO {
+export interface SouthConnectorItemCommandDTO<T extends SouthItemSettings = any> {
+  id?: string;
   name: string;
-  settings: any;
-  scanModeId: string | null;
+  settings: T;
+  scanModeId: string;
 }
 
-export interface OibusItemSearchParam {
+export interface SouthConnectorItemSearchParam {
   name: string | null;
   page: number;
 }
 
-export interface OibusItemManifest {
+export interface SouthConnectorItemManifest {
   scanMode: {
     acceptSubscription: boolean;
     subscriptionOnly: boolean;
@@ -78,6 +88,7 @@ export interface OibusItemManifest {
 }
 
 export interface SouthConnectorManifest {
+  id: string;
   category: string;
   name: string;
   description: string;
@@ -86,14 +97,15 @@ export interface SouthConnectorManifest {
     lastPoint: boolean;
     lastFile: boolean;
     history: boolean;
+    forceMaxInstantPerItem: boolean;
   };
   settings: Array<OibFormControl>;
-  items: OibusItemManifest;
+  items: SouthConnectorItemManifest;
 }
 
 export interface SouthCache {
+  southId: string;
   scanModeId: string;
   itemId: string;
-  intervalIndex: number;
   maxInstant: Instant;
 }

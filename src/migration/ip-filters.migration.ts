@@ -1,5 +1,4 @@
 import RepositoryService from '../service/repository.service';
-import { ExternalSourceCommandDTO } from '../model/external-sources.model';
 import pino from 'pino';
 import { IpFilterCommandDTO } from '../model/ip-filter.model';
 

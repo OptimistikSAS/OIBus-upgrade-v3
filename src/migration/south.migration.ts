@@ -1,6 +1,6 @@
 import RepositoryService from '../service/repository.service';
 import pino from 'pino';
-import { SouthV2 } from '../model/config.model';
+import { ProxyV2, SouthV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
 import { convertSouthType, migrateSouthSettings } from './utils';
 import { SouthConnectorCommandDTO } from '../model/south-connector.model';
@@ -12,7 +12,7 @@ export default class SouthMigration {
     private readonly encryptionService: EncryptionService
   ) {}
 
-  async migrate(connectors: Array<SouthV2> = []): Promise<void> {
+  async migrate(connectors: Array<SouthV2> = [], _proxies: Array<ProxyV2> = []): Promise<void> {
     this.logger.info(`Migrating ${connectors.length} South connectors`);
     for (const connector of connectors) {
       this.logger.debug(`Migrating South "${connector.name}" of type ${connector.type}`);
@@ -27,7 +27,7 @@ export default class SouthMigration {
             maxReadInterval: connector.settings.maxReadInterval || 60,
             readDelay: connector.settings.readIntervalDelay || 200
           },
-          settings: migrateSouthSettings(connector, this.repositoryService.proxyRepository, this.encryptionService, this.logger)
+          settings: migrateSouthSettings(connector, this.encryptionService, this.logger)
         };
         this.repositoryService.southConnectorRepository.createSouthConnector(command, connector.id);
       } catch (error) {

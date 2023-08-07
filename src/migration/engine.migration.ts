@@ -3,7 +3,7 @@ import pino from 'pino';
 import { EngineV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
 import { EngineSettingsCommandDTO } from '../model/engine.model';
-import { convertAuthentication, convertLogLevel } from './utils';
+import { convertLogLevel } from './utils';
 
 export default class EngineMigration {
   constructor(
@@ -39,28 +39,7 @@ export default class EngineMigration {
             username: engine.logParameters.lokiLog.username,
             password: engine.logParameters.lokiLog.password
               ? await this.encryptionService.convertCiphering(engine.logParameters.lokiLog.password)
-              : '',
-            proxyId: null
-          }
-        },
-        healthSignal: {
-          logging: {
-            enabled: engine.healthSignal.logging.enabled,
-            interval: engine.healthSignal.logging.frequency
-          },
-          http: {
-            enabled: engine.healthSignal.http.enabled,
-            interval: engine.healthSignal.http.frequency,
-            verbose: true,
-            address: `${engine.healthSignal.http.host}${engine.healthSignal.http.endpoint}`,
-            proxyId: null,
-            authentication: convertAuthentication(
-              'basic',
-              engine.healthSignal.http.authentication.username,
-              engine.healthSignal.http.authentication.password
-                ? await this.encryptionService.convertCiphering(engine.healthSignal.http.authentication.password)
-                : ''
-            )
+              : ''
           }
         }
       };

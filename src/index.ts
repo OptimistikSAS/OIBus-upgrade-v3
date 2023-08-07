@@ -7,7 +7,6 @@ import { OIBusV2Config } from './model/config.model';
 import RepositoryService from './service/repository.service';
 import ExternalSourcesMigration from './migration/external-sources.migration';
 import IPFiltersMigration from './migration/ip-filters.migration';
-import ProxiesMigration from './migration/proxies.migration';
 import EncryptionService from './service/encryption.service';
 import EngineMigration from './migration/engine.migration';
 import UserMigration from './migration/user.migration';
@@ -17,14 +16,20 @@ import SouthMigration from './migration/south.migration';
 import SouthItemsMigration from './migration/south-items.migration';
 
 const CONFIG_FILE_NAME = 'oibus.json';
+
 const CONFIG_DATABASE = 'oibus.db';
 const CRYPTO_DATABASE = 'crypto.db';
+const CACHE_FOLDER = './cache';
+const CACHE_DATABASE = 'cache.db';
+const LOG_FOLDER_NAME = 'logs';
+const LOG_DB_NAME = 'journal.db';
 
 (async () => {
   const { dataFolder } = getCommandLineArguments();
 
   const baseDir = dataFolder;
   process.chdir(baseDir);
+
   const loggerService = new LoggerService();
   await loggerService.start();
   loggerService.logger!.info(`Starting OIBus Upgrade tool with base directory ${baseDir}...`);
@@ -54,8 +59,12 @@ const CRYPTO_DATABASE = 'crypto.db';
     return;
   }
 
-  const repositoryService = new RepositoryService(path.resolve(CONFIG_DATABASE), path.resolve(CRYPTO_DATABASE));
-
+  const repositoryService = new RepositoryService(
+    path.resolve(CONFIG_DATABASE),
+    path.resolve(LOG_FOLDER_NAME, LOG_DB_NAME),
+    path.resolve(CRYPTO_DATABASE),
+    path.resolve(CACHE_FOLDER, CACHE_DATABASE)
+  );
   const oibusSettings = repositoryService.engineRepository.getEngineSettings();
   if (!oibusSettings) {
     console.error('Error while loading OIBus settings from database');
@@ -74,9 +83,6 @@ const CRYPTO_DATABASE = 'crypto.db';
   const ipFiltersMigration = new IPFiltersMigration(repositoryService, loggerService.logger!);
   await ipFiltersMigration.migrate(config.engine.filter);
 
-  const proxiesMigration = new ProxiesMigration(repositoryService, loggerService.logger!, encryptionService);
-  await proxiesMigration.migrate(config.engine.proxies);
-
   const engineMigration = new EngineMigration(repositoryService, loggerService.logger!, encryptionService);
   await engineMigration.migrate(config.engine);
 
@@ -87,10 +93,10 @@ const CRYPTO_DATABASE = 'crypto.db';
   await scanModeMigration.migrate(config.engine.scanModes);
 
   const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await northMigration.migrate(config.north);
+  await northMigration.migrate(config.north, config.engine.proxies);
 
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await southMigration.migrate(config.south);
+  await southMigration.migrate(config.south, config.engine.proxies);
 
   const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!);
   for (const south of config.south) {

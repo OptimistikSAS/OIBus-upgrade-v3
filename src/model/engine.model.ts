@@ -1,43 +1,13 @@
-import { Instant } from './types';
+import { BaseEntity, Instant } from './types';
 
-export const AUTHENTICATION_TYPES = ['none', 'basic', 'bearer', 'api-key', 'cert'];
-export type AuthenticationType = (typeof AUTHENTICATION_TYPES)[number];
-
-interface BaseAuthentication {
-  type: AuthenticationType;
-}
-
-export interface BasicAuthentication extends BaseAuthentication {
-  type: 'basic';
-  username: string;
-  password: string;
-}
-
-export interface BearerAuthentication extends BaseAuthentication {
-  type: 'bearer';
-  token: string;
-}
-
-export interface ApiKeyAuthentication extends BaseAuthentication {
-  type: 'api-key';
-  key: string;
-  secret: string;
-}
-
-export interface CertAuthentication extends BaseAuthentication {
-  type: 'cert';
-  keyPath: string;
-  certPath: string;
-}
-
-export interface NoAuthentication extends BaseAuthentication {
-  type: 'none';
-}
-
-export type Authentication = BasicAuthentication | BearerAuthentication | ApiKeyAuthentication | CertAuthentication | NoAuthentication;
+export const SCOPE_TYPES = ['south', 'north', 'data-stream', 'history-engine', 'history-query', 'web-server', 'logger-service'];
+export type ScopeType = typeof SCOPE_TYPES[number];
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'trace'];
-export type LogLevel = (typeof LOG_LEVELS)[number];
+export type LogLevel = typeof LOG_LEVELS[number];
+
+export const AUTHENTICATION_TYPES = ['none', 'basic', 'bearer', 'api-key', 'cert'];
+export type AuthenticationType = typeof AUTHENTICATION_TYPES[number];
 
 /**
  * Base settings for log parameters
@@ -75,7 +45,6 @@ interface LokiLogSettings extends BaseLogSettings {
   tokenAddress: string;
   username: string;
   password: string;
-  proxyId: string | null;
 }
 
 /**
@@ -89,42 +58,12 @@ export interface LogSettings {
 }
 
 /**
- * Log settings for Health Signal
- */
-interface HealthSignalLoggingDTO {
-  enabled: boolean;
-  interval: number;
-}
-
-/**
- * HTTP settings for Health Signal
- */
-interface HealthSignalHTTPDTO {
-  enabled: boolean;
-  interval: number;
-  verbose: boolean;
-  address: string;
-  proxyId: string | null;
-  authentication: Authentication;
-}
-
-/**
- * DTO for health signal settings
- */
-export interface HealthSignalDTO {
-  logging: HealthSignalLoggingDTO;
-  http: HealthSignalHTTPDTO;
-}
-
-/**
  * Engine settings DTO
  */
-export interface EngineSettingsDTO {
-  id: string;
+export interface EngineSettingsDTO extends BaseEntity {
   name: string;
   port: number;
   logParameters: LogSettings;
-  healthSignal: HealthSignalDTO;
 }
 
 export interface CryptoSettings {
@@ -140,7 +79,6 @@ export interface EngineSettingsCommandDTO {
   name: string;
   port: number;
   logParameters: LogSettings;
-  healthSignal: HealthSignalDTO;
 }
 
 export interface OIBusError {
@@ -158,13 +96,56 @@ export interface OIBusInfo {
   architecture: string;
 }
 
-export interface ConnectorMetrics {
+export interface BaseConnectorMetrics {
   metricsStart: Instant;
-  numberOfValues: number;
-  numberOfFiles: number;
-  lastValue: any | null;
-  lastFile: string | null;
   lastConnection: Instant | null;
   lastRunStart: Instant | null;
   lastRunDuration: number | null;
+}
+
+export interface NorthConnectorMetrics extends BaseConnectorMetrics {
+  numberOfValuesSent: number;
+  numberOfFilesSent: number;
+  lastValueSent: any | null;
+  lastFileSent: string | null;
+  cacheSize: number;
+}
+
+export interface SouthHistoryMetrics {}
+
+export interface SouthConnectorMetrics extends BaseConnectorMetrics {
+  numberOfValuesRetrieved: number;
+  numberOfFilesRetrieved: number;
+  lastValueRetrieved: any | null;
+  lastFileRetrieved: string | null;
+  historyMetrics: SouthHistoryMetrics;
+}
+
+export interface HistoryMetrics {
+  north: NorthConnectorMetrics;
+  south: SouthConnectorMetrics;
+}
+
+export interface EngineMetrics {
+  metricsStart: Instant;
+  processCpuUsageInstant: number;
+  processCpuUsageAverage: number;
+  processUptime: number;
+  freeMemory: number;
+  totalMemory: number;
+  minRss: number;
+  currentRss: number;
+  maxRss: number;
+  minHeapTotal: number;
+  currentHeapTotal: number;
+  maxHeapTotal: number;
+  minHeapUsed: number;
+  currentHeapUsed: number;
+  maxHeapUsed: number;
+  minExternal: number;
+  currentExternal: number;
+  maxExternal: number;
+  minArrayBuffers: number;
+  currentArrayBuffers: number;
+  maxArrayBuffers: number;
 }

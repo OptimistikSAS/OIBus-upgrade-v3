@@ -1,6 +1,6 @@
 import RepositoryService from '../service/repository.service';
 import pino from 'pino';
-import { NorthV2 } from '../model/config.model';
+import { NorthV2, ProxyV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
 import { NorthConnectorCommandDTO } from '../model/north-connector.model';
 import { convertNorthType, intervalToCron, migrateNorthSettings } from './utils';
@@ -12,7 +12,7 @@ export default class NorthMigration {
     private readonly encryptionService: EncryptionService
   ) {}
 
-  async migrate(connectors: Array<NorthV2> = []): Promise<void> {
+  async migrate(connectors: Array<NorthV2> = [], proxies: Array<ProxyV2> = []): Promise<void> {
     this.logger.info(`Migrating ${connectors.length} North connectors`);
     for (const connector of connectors) {
       this.logger.trace(`Migrating North "${connector.name}"`);
@@ -35,7 +35,7 @@ export default class NorthMigration {
             enabled: connector.caching.archive.enabled,
             retentionDuration: connector.caching.archive.retentionDuration
           },
-          settings: migrateNorthSettings(connector, this.repositoryService.proxyRepository, this.encryptionService, this.logger)
+          settings: migrateNorthSettings(connector, this.encryptionService, this.logger, proxies)
         };
         this.repositoryService.northConnectorRepository.createNorthConnector(command, connector.id);
       } catch (error) {

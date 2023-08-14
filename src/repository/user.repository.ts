@@ -8,24 +8,11 @@ import { Page } from '../model/types';
 export const USERS_TABLE = 'users';
 const PAGE_SIZE = 50;
 
-const DEFAULT_USER: UserCommandDTO = {
-  login: 'admin',
-  firstName: '',
-  lastName: '',
-  email: '',
-  language: 'en',
-  timezone: 'Europe/Paris'
-};
-
-const DEFAULT_PASSWORD = 'pass';
-
 /**
  * Repository used for Users
  */
 export default class UserRepository {
-  constructor(private readonly database: Database) {
-    this.createDefaultUser();
-  }
+  constructor(private readonly database: Database) {}
 
   /**
    * Retrieve users based on search params
@@ -163,17 +150,5 @@ export default class UserRepository {
   deleteUser(id: string): void {
     const query = `DELETE FROM ${USERS_TABLE} WHERE id = ?;`;
     this.database.prepare(query).run(id);
-  }
-
-  createDefaultUser(): void {
-    const query = `SELECT id, login, first_name as firstName, last_name as lastName, email, language, timezone FROM ${USERS_TABLE} WHERE login = ?;`;
-    const result = this.database.prepare(query).get(DEFAULT_USER.login);
-    if (result) {
-      return;
-    }
-
-    this.createUser(DEFAULT_USER, DEFAULT_PASSWORD).catch(err => {
-      console.error(err);
-    });
   }
 }

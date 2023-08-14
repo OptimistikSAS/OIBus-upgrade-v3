@@ -4,40 +4,11 @@ import { Database } from 'better-sqlite3';
 
 export const ENGINES_TABLE = 'engines';
 
-const defaultEngineSettings: EngineSettingsCommandDTO = {
-  name: 'OIBus',
-  port: 2223,
-  logParameters: {
-    console: {
-      level: 'silent'
-    },
-    file: {
-      level: 'info',
-      maxFileSize: 50,
-      numberOfFiles: 5
-    },
-    database: {
-      level: 'info',
-      maxNumberOfLogs: 100_000
-    },
-    loki: {
-      level: 'silent',
-      interval: 60,
-      address: '',
-      tokenAddress: '',
-      username: '',
-      password: ''
-    }
-  }
-};
-
 /**
  * Repository used for engine settings
  */
 export default class EngineRepository {
-  constructor(private readonly database: Database) {
-    this.createEngineSettings(defaultEngineSettings);
-  }
+  constructor(private readonly database: Database) {}
 
   /**
    * Retrieve engine settings

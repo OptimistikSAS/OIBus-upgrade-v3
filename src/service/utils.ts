@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import minimist from 'minimist';
+import pino from 'pino';
 
 /**
  * Get config file from console arguments
@@ -43,6 +44,14 @@ const filesExists = async (filePath: string): Promise<boolean> => {
     return false;
   }
   return true;
+};
+
+export const deleteFile = async (filePath: string, logger: pino.Logger): Promise<void> => {
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    logger.warn(`Error deleting file ${filePath}. ${error}`);
+  }
 };
 
 const CHARACTER_SET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';

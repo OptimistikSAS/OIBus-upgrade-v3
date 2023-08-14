@@ -28,13 +28,11 @@ import {
   SouthOIAnalyticsSettings,
   SouthOPCHDAItemSettings,
   SouthOPCHDASettings,
-  SouthOPCUADAItemSettings,
-  SouthOPCUADASettings,
-  SouthOPCUADASettingsAuthentication,
-  SouthOPCUAHAItemSettings,
-  SouthOPCUAHAItemSettingsAggregate,
-  SouthOPCUAHAItemSettingsResampling,
-  SouthOPCUAHASettings,
+  SouthOPCUAItemSettings,
+  SouthOPCUAItemSettingsHaModeAggregate,
+  SouthOPCUAItemSettingsHaModeResampling,
+  SouthOPCUASettings,
+  SouthOPCUASettingsAuthentication,
   SouthOracleSettings,
   SouthPostgreSQLSettings,
   SouthSlimsSettings,
@@ -270,9 +268,9 @@ export const convertSouthType = (type: string, settings: any): string => {
     case 'OPCHDA':
       return 'opc-hda';
     case 'OPCUA_DA':
-      return 'opcua-da';
+      return 'opcua';
     case 'OPCUA_HA':
-      return 'opcua-ha';
+      return 'opcua';
     case 'RestApi':
       switch (settings.payloadParser) {
         case 'SLIMS':
@@ -378,31 +376,29 @@ const migrateOPCHDA = (connector: SouthV2): SouthOPCHDASettings => {
   };
 };
 
-const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUADASettings> => {
+const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
     securityMode: connector.settings.securityMode,
     securityPolicy: connector.settings.securityPolicy,
-    readTimeout: connector.settings.readTimeout,
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
   };
 };
 
-const migrateOPCUAHA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUAHASettings> => {
+const migrateOPCUAHA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
     securityMode: connector.settings.securityMode,
     securityPolicy: connector.settings.securityPolicy,
-    readTimeout: connector.settings.readTimeout,
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
   };
 };
 
-const migrateOPCUAAuth = async (settings: any, encryptionService: EncryptionService): Promise<SouthOPCUADASettingsAuthentication> => {
+const migrateOPCUAAuth = async (settings: any, encryptionService: EncryptionService): Promise<SouthOPCUASettingsAuthentication> => {
   if (settings.keyFile && settings.cert) {
     return { type: 'cert', certFilePath: settings.cert, keyFilePath: settings.keyFile };
   }
@@ -517,7 +513,7 @@ const migrateRestApi = async (
   }
 };
 
-export const migrateItemSettings = (connector: SouthV2, item: ItemV2, logger: pino.Logger) => {
+export const migrateItemSettings = (connector: SouthV2, item: ItemV2) => {
   switch (connector.type) {
     case 'ADS':
       return migrateAdsItem(connector, item);
@@ -562,22 +558,26 @@ const migrateSouthMQTTItem = (connector: SouthV2, item: ItemV2): SouthMQTTItemSe
   };
 };
 
-const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUADAItemSettings => {
+const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {
   return {
-    nodeId: item.nodeId
+    nodeId: item.nodeId,
+    mode: 'DA'
   };
 };
 
-const migrateOPCUAHAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAHAItemSettings => {
+const migrateOPCUAHAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {
   const scanGroup = connector.settings.scanGroups.find((group: any) => group.scanMode === item.scanMode);
   return {
-    aggregate: convertOPCUAAggregate(scanGroup?.aggregate),
-    resampling: convertOPCUAResampling(scanGroup?.resampling),
-    nodeId: item.nodeId
+    nodeId: item.nodeId,
+    mode: 'HA',
+    haMode: {
+      aggregate: convertOPCUAAggregate(scanGroup?.aggregate),
+      resampling: convertOPCUAResampling(scanGroup?.resampling)
+    }
   };
 };
 
-const convertOPCUAAggregate = (aggregate: string | undefined): SouthOPCUAHAItemSettingsAggregate => {
+const convertOPCUAAggregate = (aggregate: string | undefined): SouthOPCUAItemSettingsHaModeAggregate => {
   switch (aggregate) {
     case 'Average':
       return 'average';
@@ -593,7 +593,7 @@ const convertOPCUAAggregate = (aggregate: string | undefined): SouthOPCUAHAItemS
   }
 };
 
-const convertOPCUAResampling = (aggregate: string | undefined): SouthOPCUAHAItemSettingsResampling => {
+const convertOPCUAResampling = (aggregate: string | undefined): SouthOPCUAItemSettingsHaModeResampling => {
   switch (aggregate) {
     case 'Second':
       return 'second';

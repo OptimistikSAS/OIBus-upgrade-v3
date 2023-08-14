@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { filesExists, getCommandLineArguments } from './service/utils';
+import { deleteFile, filesExists, getCommandLineArguments } from './service/utils';
 import LoggerService from './service/logger/logger.service';
 import migrationLegacy from './migration/legacy/migration.service.js';
 import { OIBusV2Config } from './model/config.model';
@@ -138,9 +138,11 @@ const LOG_DB_NAME = 'logs.db';
   await northMigration.migrate(config.north, config.engine.proxies);
 
   // Removing obsolete files
-  await fs.unlink(path.resolve(LOG_FOLDER_NAME, 'journal.db'));
-  await fs.unlink(path.resolve(CONFIG_FILE_NAME));
-  await fs.unlink(path.resolve('./history-query.db'));
+
+  await deleteFile(path.resolve(LOG_FOLDER_NAME, 'journal.db'), loggerService.logger!);
+  await deleteFile(path.resolve(CONFIG_FILE_NAME), loggerService.logger!);
+  await deleteFile(path.resolve('./history-query.db'), loggerService.logger!);
+
   await fs.rm(path.resolve('./certs/opcua'), { recursive: true, force: true });
   await fs.rm(path.resolve(CACHE_FOLDER, 'archived'), { recursive: true, force: true });
   await fs.rm(path.resolve(CACHE_FOLDER, 'keys'), { recursive: true, force: true });

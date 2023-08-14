@@ -56,7 +56,7 @@ export default class SouthItemsMigration {
         const command: SouthConnectorItemCommandDTO = {
           name: item.pointId,
           scanModeId: scanMode?.id || 'subscription',
-          settings: migrateItemSettings(southConnector, item, this.logger)
+          settings: migrateItemSettings(southConnector, item)
         };
         this.repositoryService.southItemRepository.createSouthItem(southConnector.id, command, item.id);
       } catch (error) {

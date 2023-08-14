@@ -8,17 +8,7 @@ export const SCAN_MODES_TABLE = 'scan_modes';
  * Repository used for scan modes (cron definitions)
  */
 export default class ScanModeRepository {
-  constructor(private readonly database: Database) {
-    if (this.getScanModes().length === 0) {
-      this.createScanMode({ name: 'Every seconds', description: 'Trigger every seconds', cron: '* * * * * *' });
-      this.createScanMode({ name: 'Every 10 seconds', description: 'Trigger every 10 seconds', cron: '*/10 * * * * *' });
-      this.createScanMode({ name: 'Every minutes', description: 'Trigger every minutes', cron: '0 * * * * *' });
-      this.createScanMode({ name: 'Every 10 minutes', description: 'Trigger every 10 minutes', cron: '0 */10 * * * *' });
-      this.createScanMode({ name: 'Every hours', description: 'Trigger every hours', cron: '0 0 * * * *' });
-      this.createScanMode({ name: 'Every 24 hours', description: 'Trigger every 24 hours', cron: '0 0 0 * * *' });
-      this.createScanMode({ name: 'Subscription', description: 'Used for subscription', cron: '' }, 'subscription');
-    }
-  }
+  constructor(private readonly database: Database) {}
 
   /**
    * Retrieve all scan modes

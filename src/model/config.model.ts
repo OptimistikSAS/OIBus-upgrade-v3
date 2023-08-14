@@ -41,7 +41,7 @@ export interface LogParametersV2 {
   fileLog: {
     level: LogLevelV2;
     maxSize: number;
-    numberOfFile: number;
+    numberOfFiles: number;
     tailable: boolean;
   };
   sqliteLog: {

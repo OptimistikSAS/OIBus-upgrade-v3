@@ -14,6 +14,8 @@ import ScanModesMigration from './migration/scan-modes.migration';
 import NorthMigration from './migration/north.migration';
 import SouthMigration from './migration/south.migration';
 import SouthItemsMigration from './migration/south-items.migration';
+import SouthCacheMigration from './migration/cache.migration';
+import fs from 'node:fs/promises';
 
 const CONFIG_FILE_NAME = 'oibus.json';
 
@@ -22,7 +24,7 @@ const CRYPTO_DATABASE = 'crypto.db';
 const CACHE_FOLDER = './cache';
 const CACHE_DATABASE = 'cache.db';
 const LOG_FOLDER_NAME = 'logs';
-const LOG_DB_NAME = 'journal.db';
+const LOG_DB_NAME = 'logs.db';
 
 (async () => {
   const { dataFolder, check } = getCommandLineArguments();
@@ -60,6 +62,26 @@ const LOG_DB_NAME = 'journal.db';
   if (!(await filesExists(path.resolve(CRYPTO_DATABASE)))) {
     loggerService.logger!.error(
       `The file ${path.resolve(CRYPTO_DATABASE)} does not exist. Make sure an OIBus v3 is running and its settings are in ${dataFolder}`
+    );
+    return;
+  }
+
+  if (!(await filesExists(path.resolve(CACHE_FOLDER, CACHE_DATABASE)))) {
+    loggerService.logger!.error(
+      `The file ${path.resolve(
+        CACHE_FOLDER,
+        CACHE_DATABASE
+      )} does not exist. Make sure an OIBus v3 is running and its settings are in ${dataFolder}`
+    );
+    return;
+  }
+
+  if (!(await filesExists(path.resolve(LOG_FOLDER_NAME, LOG_DB_NAME)))) {
+    loggerService.logger!.error(
+      `The file ${path.resolve(
+        LOG_FOLDER_NAME,
+        LOG_DB_NAME
+      )} does not exist. Make sure an OIBus v3 is running and its settings are in ${dataFolder}`
     );
     return;
   }
@@ -105,8 +127,23 @@ const LOG_DB_NAME = 'journal.db';
     await itemMigration.migrate(south);
   }
 
+  const southCacheMigration = new SouthCacheMigration(repositoryService, loggerService.logger!);
+  const SOUTH_WITH_CACHE = ['OPCUA_HA', 'OPCHDA', 'SQL', 'RestApi'];
+  await southCacheMigration.migrate(
+    config.south.filter(south => SOUTH_WITH_CACHE.includes(south.type)),
+    CACHE_FOLDER
+  );
+
   const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
   await northMigration.migrate(config.north, config.engine.proxies);
+
+  // Removing obsolete files
+  await fs.unlink(path.resolve(LOG_FOLDER_NAME, 'journal.db'));
+  await fs.unlink(path.resolve(CONFIG_FILE_NAME));
+  await fs.unlink(path.resolve('./history-query.db'));
+  await fs.rm(path.resolve('./certs/opcua'), { recursive: true, force: true });
+  await fs.rm(path.resolve(CACHE_FOLDER, 'archived'), { recursive: true, force: true });
+  await fs.rm(path.resolve(CACHE_FOLDER, 'keys'), { recursive: true, force: true });
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

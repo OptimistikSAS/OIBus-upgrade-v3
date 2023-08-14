@@ -1,7 +1,7 @@
 import RepositoryService from '../service/repository.service';
 import pino from 'pino';
 import { SouthV2 } from '../model/config.model';
-import { migrateItemSettings } from './utils';
+import { migrateDelimiter, migrateItemSettings } from './utils';
 import { SouthConnectorItemCommandDTO } from '../model/south-connector.model';
 import {
   SouthFolderScannerItemSettings,
@@ -18,23 +18,27 @@ export default class SouthItemsMigration {
   constructor(private readonly repositoryService: RepositoryService, private readonly logger: pino.Logger) {}
 
   async migrate(southConnector: SouthV2): Promise<void> {
-    switch (southConnector.type) {
-      case 'ADS':
-      case 'Modbus':
-      case 'MQTT':
-      case 'OPCUA_HA':
-      case 'OPCUA_DA':
-      case 'OPCHDA':
-        return await this.migratePoints(southConnector);
-      case 'FolderScanner':
-        return await this.createFolderScannerItem(southConnector);
-      case 'SQL':
-        return await this.createSQLItem(southConnector);
-      case 'RestApi':
-        return await this.createRestApiItem(southConnector);
-      default:
-        this.logger.error(`South type ${southConnector.type} not recognized`);
-        return;
+    try {
+      switch (southConnector.type) {
+        case 'ADS':
+        case 'Modbus':
+        case 'MQTT':
+        case 'OPCUA_HA':
+        case 'OPCUA_DA':
+        case 'OPCHDA':
+          return await this.migratePoints(southConnector);
+        case 'FolderScanner':
+          return await this.createFolderScannerItem(southConnector);
+        case 'SQL':
+          return await this.createSQLItem(southConnector);
+        case 'RestApi':
+          return await this.createRestApiItem(southConnector);
+        default:
+          this.logger.error(`South type ${southConnector.type} not recognized`);
+          return;
+      }
+    } catch (error) {
+      this.logger.error(`Error when migrating South item for connector "${JSON.stringify(southConnector.name)}": ${error}`);
     }
   }
 
@@ -104,7 +108,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -132,7 +136,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -160,7 +164,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -188,7 +192,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -216,7 +220,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -244,7 +248,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -254,7 +258,7 @@ export default class SouthItemsMigration {
         this.repositoryService.southItemRepository.createSouthItem(southConnector.id, odbcCommand);
         break;
       default:
-        break;
+        throw new Error(`SQL with driver ${southConnector.settings.driver} unknown in V3`);
     }
   };
 
@@ -264,7 +268,7 @@ export default class SouthItemsMigration {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return;
     }
-    switch (southConnector.settings.driver) {
+    switch (southConnector.settings.payloadParser) {
       case 'SLIMS':
         const slimsCommand: SouthConnectorItemCommandDTO<SouthSlimsItemSettings> = {
           name: southConnector.name,
@@ -290,7 +294,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -313,7 +317,7 @@ export default class SouthItemsMigration {
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
-              delimiter: southConnector.settings.delimiter,
+              delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
               compression: southConnector.settings.compression
@@ -323,7 +327,7 @@ export default class SouthItemsMigration {
         this.repositoryService.southItemRepository.createSouthItem(southConnector.id, oiaCommand);
         break;
       default:
-        break;
+        throw new Error(`REST API with driver ${southConnector.settings.payloadParser} unknown in V3`);
     }
   };
 }

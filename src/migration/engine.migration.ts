@@ -25,7 +25,7 @@ export default class EngineMigration {
           file: {
             level: convertLogLevel(engine.logParameters.fileLog.level),
             maxFileSize: engine.logParameters.fileLog.maxSize,
-            numberOfFiles: engine.logParameters.fileLog.numberOfFile
+            numberOfFiles: engine.logParameters.fileLog.numberOfFiles
           },
           database: {
             level: convertLogLevel(engine.logParameters.sqliteLog.level),

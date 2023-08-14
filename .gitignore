@@ -2,6 +2,7 @@
 /build/bin
 /build/dist
 /tests/coverage
+/data-folder
 
 # Node
 /node_modules

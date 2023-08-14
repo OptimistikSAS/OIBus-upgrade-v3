@@ -27,7 +27,7 @@ export default class SouthMigration {
             maxReadInterval: connector.settings.maxReadInterval || 60,
             readDelay: connector.settings.readIntervalDelay || 200
           },
-          settings: migrateSouthSettings(connector, this.encryptionService, this.logger)
+          settings: await migrateSouthSettings(connector, this.encryptionService, this.logger)
         };
         this.repositoryService.southConnectorRepository.createSouthConnector(command, connector.id);
       } catch (error) {

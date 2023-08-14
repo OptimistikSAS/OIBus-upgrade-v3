@@ -23,7 +23,7 @@ export default class NorthMigration {
           type: convertNorthType(connector.type),
           enabled: connector.enabled,
           caching: {
-            scanModeId: intervalToCron(connector.caching.sendInterval, this.repositoryService.scanModeRepository),
+            scanModeId: intervalToCron(connector.caching.sendInterval, this.repositoryService.scanModeRepository, this.logger),
             retryInterval: connector.caching.retryInterval,
             retryCount: connector.caching.retryCount,
             groupCount: connector.caching.groupCount,
@@ -33,9 +33,9 @@ export default class NorthMigration {
           },
           archive: {
             enabled: connector.caching.archive.enabled,
-            retentionDuration: connector.caching.archive.retentionDuration
+            retentionDuration: connector.caching.archive.retentionDuration ?? 72
           },
-          settings: migrateNorthSettings(connector, this.encryptionService, this.logger, proxies)
+          settings: await migrateNorthSettings(connector, this.encryptionService, this.logger, proxies)
         };
         this.repositoryService.northConnectorRepository.createNorthConnector(command, connector.id);
 

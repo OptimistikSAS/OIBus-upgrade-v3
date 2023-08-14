@@ -21,6 +21,7 @@ import {
   SouthModbusSettings,
   SouthMQTTItemSettings,
   SouthMQTTSettings,
+  SouthMQTTSettingsQos,
   SouthMSSQLSettings,
   SouthMySQLSettings,
   SouthODBCSettings,
@@ -31,12 +32,15 @@ import {
   SouthOPCUADASettings,
   SouthOPCUADASettingsAuthentication,
   SouthOPCUAHAItemSettings,
+  SouthOPCUAHAItemSettingsAggregate,
+  SouthOPCUAHAItemSettingsResampling,
   SouthOPCUAHASettings,
   SouthOracleSettings,
   SouthPostgreSQLSettings,
   SouthSlimsSettings,
   SouthSQLiteSettings
 } from '../model/south-settings.model';
+import { CsvCharacter } from '../model/types';
 
 export const convertLogLevel = (logLevel: LogLevelV2): LogLevel => {
   switch (logLevel) {
@@ -95,8 +99,9 @@ export const convertCronTime = (cronTime: string): string => {
   return standardCron;
 };
 
-export const intervalToCron = (interval: number, repository: ScanModeRepository): string => {
+export const intervalToCron = (interval: number, repository: ScanModeRepository, logger: pino.Logger): string => {
   const scanMode = repository.getByName('Every 10 seconds');
+  logger.warn(`North send interval ${interval} replaced with scan mode ${JSON.stringify(scanMode)}`);
   if (scanMode) {
     return scanMode.id;
   } else {
@@ -126,8 +131,7 @@ export const migrateNorthSettings = async (
     case 'FileWriter':
       return migrateFileWriter(connector);
     default:
-      logger.warn(`North type ${connector.type} not recognized`);
-      return connector.settings;
+      throw new Error(`North connector type ${connector.type} unknown in V3`);
   }
 };
 
@@ -135,6 +139,8 @@ export const convertNorthType = (type: string): string => {
   switch (type) {
     case 'AmazonS3':
       return 'aws-s3';
+    case 'AzureBlob':
+      return 'azure-blob';
     case 'Console':
       return 'console';
     case 'FileWriter':
@@ -144,7 +150,7 @@ export const convertNorthType = (type: string): string => {
     case 'OIConnect':
       return 'oiconnect';
     default:
-      return type;
+      throw new Error(`North connector type ${type} unknown in V3`);
   }
 };
 
@@ -247,8 +253,7 @@ export const migrateSouthSettings = async (connector: SouthV2, encryptionService
     case 'RestApi':
       return await migrateRestApi(connector, encryptionService);
     default:
-      logger.warn(`South type ${connector.type} not recognized`);
-      return connector.settings;
+      throw new Error(`South connector type ${connector.type} unknown in V3`);
   }
 };
 
@@ -269,13 +274,13 @@ export const convertSouthType = (type: string, settings: any): string => {
     case 'OPCUA_HA':
       return 'opcua-ha';
     case 'RestApi':
-      switch (settings.driver) {
+      switch (settings.payloadParser) {
         case 'SLIMS':
           return 'slims';
         case 'OIAnalytics time values':
           return 'oianalytics';
         default:
-          return type;
+          throw new Error(`REST API with driver ${settings.payloadParser} unknown in V3`);
       }
     case 'SQL':
       switch (settings.driver) {
@@ -292,10 +297,10 @@ export const convertSouthType = (type: string, settings: any): string => {
         case 'sqlite':
           return 'sqlite';
         default:
-          return type;
+          throw new Error(`SQL with driver ${settings.driver} unknown in V3`);
       }
     default:
-      return type;
+      throw new Error(`South connector type ${type} unknown in V3`);
   }
 };
 
@@ -341,7 +346,7 @@ const migrateModbus = (connector: SouthV2): SouthModbusSettings => {
 const migrateSouthMQTT = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthMQTTSettings> => {
   return {
     url: connector.settings.url,
-    qos: connector.settings.qos,
+    qos: `${connector.settings.qos}` as SouthMQTTSettingsQos,
     persistent: connector.settings.persistent,
     rejectUnauthorized: connector.settings.rejectUnauthorized,
     reconnectPeriod: connector.settings.reconnectPeriod,
@@ -479,7 +484,7 @@ const migrateSQL = async (
         trustServerCertificate: connector.settings.selfSigned
       };
     default:
-      return {};
+      throw new Error(`SQL with driver ${connector.settings.driver} unknown in V3`);
   }
 };
 
@@ -508,7 +513,7 @@ const migrateRestApi = async (
         ...(await migrateProxy(undefined, encryptionService))
       };
     default:
-      return {};
+      throw new Error(`REST API with driver ${connector.settings.driver} unknown in V3`);
   }
 };
 
@@ -527,8 +532,7 @@ export const migrateItemSettings = (connector: SouthV2, item: ItemV2, logger: pi
     case 'OPCHDA':
       return migrateOPCHDAItem(connector, item);
     default:
-      logger.warn(`South type ${connector.type} does not support points`);
-      return connector.settings;
+      throw new Error(`No point migration available for connector of type ${connector.type}`);
   }
 };
 
@@ -567,10 +571,46 @@ const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUADAItemS
 const migrateOPCUAHAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAHAItemSettings => {
   const scanGroup = connector.settings.scanGroups.find((group: any) => group.scanMode === item.scanMode);
   return {
-    aggregate: scanGroup?.aggregate || 'Raw',
-    resampling: scanGroup?.resampling || 'None',
+    aggregate: convertOPCUAAggregate(scanGroup?.aggregate),
+    resampling: convertOPCUAResampling(scanGroup?.resampling),
     nodeId: item.nodeId
   };
+};
+
+const convertOPCUAAggregate = (aggregate: string | undefined): SouthOPCUAHAItemSettingsAggregate => {
+  switch (aggregate) {
+    case 'Average':
+      return 'average';
+    case 'Minimum':
+      return 'minimum';
+    case 'Maximum':
+      return 'maximum';
+    case 'Count':
+      return 'count';
+    case 'Raw':
+    default:
+      return 'raw';
+  }
+};
+
+const convertOPCUAResampling = (aggregate: string | undefined): SouthOPCUAHAItemSettingsResampling => {
+  switch (aggregate) {
+    case 'Second':
+      return 'second';
+    case '10 Seconds':
+      return '10Seconds';
+    case '30 Seconds':
+      return '30Seconds';
+    case 'Minute':
+      return 'minute';
+    case 'Hour':
+      return 'hour';
+    case 'Day':
+      return 'day';
+    case 'None':
+    default:
+      return 'none';
+  }
 };
 
 const migrateOPCHDAItem = (connector: SouthV2, item: ItemV2): SouthOPCHDAItemSettings => {
@@ -606,4 +646,22 @@ const migrateProxy = async (proxy: ProxyV2 | undefined, encryptionService: Encry
     proxyUsername: proxy.username,
     proxyPassword: await encryptionService.convertCiphering(proxy.password)
   };
+};
+
+export const migrateDelimiter = (character: string): CsvCharacter => {
+  switch (character) {
+    case '.':
+      return 'DOT';
+    case ';':
+      return 'SEMI_COLON';
+    case ':':
+      return 'COLON';
+    case '/':
+      return 'SLASH';
+    case '|':
+      return 'PIPE';
+    case ',':
+    default:
+      return 'COMMA';
+  }
 };

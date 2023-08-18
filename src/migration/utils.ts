@@ -1,5 +1,5 @@
 import { LogLevel } from '../model/engine.model';
-import { AuthenticationTypeV2, ItemV2, LogLevelV2, NorthV2, ProxyV2, SouthV2 } from '../model/config.model';
+import { AuthenticationTypeV2, ItemV2, LogLevelV2, NorthTypeV2, NorthV2, ProxyV2, SouthTypeV2, SouthV2 } from '../model/config.model';
 import ScanModeRepository from '../repository/scan-mode.repository';
 import EncryptionService from '../service/encryption.service';
 import pino from 'pino';
@@ -133,7 +133,7 @@ export const migrateNorthSettings = async (
   }
 };
 
-export const convertNorthType = (type: string): string => {
+export const convertNorthType = (type: NorthTypeV2): string => {
   switch (type) {
     case 'AmazonS3':
       return 'aws-s3';
@@ -248,6 +248,8 @@ export const migrateSouthSettings = async (connector: SouthV2, encryptionService
       return migrateOPCHDA(connector);
     case 'SQL':
       return await migrateSQL(connector, encryptionService);
+    case 'ODBC (remote)':
+      return await migrateRemoteODBCSQL(connector);
     case 'RestApi':
       return await migrateRestApi(connector, encryptionService);
     default:
@@ -255,7 +257,7 @@ export const migrateSouthSettings = async (connector: SouthV2, encryptionService
   }
 };
 
-export const convertSouthType = (type: string, settings: any): string => {
+export const convertSouthType = (type: SouthTypeV2, settings: any): string => {
   switch (type) {
     case 'ADS':
       return 'ads';
@@ -297,6 +299,8 @@ export const convertSouthType = (type: string, settings: any): string => {
         default:
           throw new Error(`SQL with driver ${settings.driver} unknown in V3`);
       }
+    case 'ODBC (remote)':
+      return 'odbc';
     default:
       throw new Error(`South connector type ${type} unknown in V3`);
   }
@@ -429,8 +433,8 @@ const migrateSQL = async (
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         domain: connector.settings.domain,
-        encryption: connector.settings.encryption,
-        trustServerCertificate: connector.settings.selfSigned,
+        encryption: connector.settings.encryption || false,
+        trustServerCertificate: connector.settings.selfSigned || false,
         connectionTimeout: connector.settings.connectionTimeout,
         requestTimeout: connector.settings.requestTimeout
       };
@@ -470,18 +474,30 @@ const migrateSQL = async (
       };
     case 'odbc':
       return {
-        driverPath: connector.settings.odbcDriverPath,
-        host: connector.settings.host,
-        port: connector.settings.port,
-        database: connector.settings.database,
-        username: connector.settings.username,
+        remoteAgent: false,
+        connectionString: `Driver=${connector.settings.odbcDriverPath};SERVER=${connector.settings.host},${
+          connector.settings.port
+        };TrustServerCertificate=${connector.settings.selfSigned ? 'yes' : 'no'};Database=${connector.settings.database};UID=${
+          connector.settings.username
+        }`,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
-        trustServerCertificate: connector.settings.selfSigned
+        requestTimeout: connector.settings.requestTimeout
       };
     default:
       throw new Error(`SQL with driver ${connector.settings.driver} unknown in V3`);
   }
+};
+
+const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettings> => {
+  return {
+    remoteAgent: true,
+    agentUrl: connector.settings.agentUrl,
+    connectionString: connector.settings.connectionString,
+    password: '',
+    connectionTimeout: connector.settings.connectionTimeout,
+    requestTimeout: connector.settings.requestTimeout
+  };
 };
 
 const migrateRestApi = async (

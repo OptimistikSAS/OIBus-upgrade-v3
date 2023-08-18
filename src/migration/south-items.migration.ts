@@ -31,6 +31,8 @@ export default class SouthItemsMigration {
           return await this.createFolderScannerItem(southConnector);
         case 'SQL':
           return await this.createSQLItem(southConnector);
+        case 'ODBC (remote)':
+          return await this.createODBCItem(southConnector);
         case 'RestApi':
           return await this.createRestApiItem(southConnector);
         default:
@@ -260,6 +262,40 @@ export default class SouthItemsMigration {
       default:
         throw new Error(`SQL with driver ${southConnector.settings.driver} unknown in V3`);
     }
+  };
+
+  createODBCItem = async (southConnector: SouthV2) => {
+    const scanMode = this.repositoryService.scanModeRepository.getByName(southConnector.scanMode);
+    if (!scanMode) {
+      this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
+      return;
+    }
+    const odbcCommand: SouthConnectorItemCommandDTO<SouthSQLiteItemSettings> = {
+      name: southConnector.name,
+      scanModeId: scanMode.id,
+      settings: {
+        query: southConnector.settings.query,
+        dateTimeFields: [
+          {
+            fieldName: southConnector.settings.timeColumn,
+            useAsReference: true,
+            type: 'string',
+            format: southConnector.settings.datasourceTimestampFormat,
+            timezone: southConnector.settings.datasourceTimezone,
+            locale: 'en-US'
+          }
+        ],
+        serialization: {
+          type: 'csv',
+          filename: southConnector.settings.filename,
+          delimiter: migrateDelimiter(southConnector.settings.delimiter),
+          outputTimestampFormat: southConnector.settings.outputTimestampFormat,
+          outputTimezone: southConnector.settings.outputTimezone,
+          compression: southConnector.settings.compression
+        }
+      }
+    };
+    this.repositoryService.southItemRepository.createSouthItem(southConnector.id, odbcCommand);
   };
 
   createRestApiItem = async (southConnector: SouthV2) => {

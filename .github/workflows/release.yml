@@ -19,12 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag-name: ${{ steps.release.outputs.tag_name }}
+      release-created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: google-github-actions/release-please-action@v3
         id: release
         with:
           release-type: node
-          signoff: true
+          signoff: "Optimistik SAS <optimistiksas@users.noreply.github.com>"
 
   build-binaries:
     needs: release-please
@@ -41,29 +42,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-
-
+        # these if statements ensure that a publication only occurs when
+        # a new release is created:
+        if: ${{ steps.release.outputs.release_created }}
       - name: Setup environment
+        if: ${{ steps.release.outputs.release_created }}
         uses: ./.github/actions/setup_environment
         with:
           cache_version: ${{ secrets.GH_ACTIONS_CACHE_KEY }}
 
       - name: Build OIBus for ${{ matrix.config['friendlyName'] }}
+        if: ${{ steps.release.outputs.release_created }}
         run: npm run build:${{ matrix.config['platform'] }}
 
       - name: Test OIBus run for ${{ matrix.config['friendlyName'] }}
+        if: ${{ steps.release.outputs.release_created }}
         run: |
           cd ./build/bin/${{ matrix.config['platform'] }}
           ./oibus --config ../../../data-folder --check true
 
       - name: Package OIBus for ${{ matrix.config['friendlyName'] }}
+        if: ${{ steps.release.outputs.release_created }}
         run: |
           cd build/bin/${{ matrix.config['platform'] }}
           ${{ matrix.config['zip'] }} ../${{ matrix.config['archiveName'] }} .
 
       - name: Upload Release Artifact
+        if: ${{ steps.release.outputs.release_created }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:

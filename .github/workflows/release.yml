@@ -42,7 +42,7 @@ jobs:
           PRERELEASE=false
           BRANCH=$(git branch --show-current| tr '\\/' - | tr -dc '[:alnum:]-+.\n\r' ) # first tr replace / and \ to -, second tr removes all non alphanums except .+-\n\r)
           BRANCH_RELEASE=${BRANCH}
-          if [ "$BRANCH" != release ]; then
+          if [ "$BRANCH" != main ]; then
             PRERELEASE=true
             VERSION_ARGS="--prerelease $(echo ${BRANCH} | tr '\\/' - | tr -dc '[:alnum:]-+.\n\r' )" # first tr replace / and \ to -, second tr removes all non alphanums except .+-\n\r
             BRANCH_RELEASE="${BRANCH}-release"

@@ -16,8 +16,8 @@ jobs:
     name: 'Tag new version'
     runs-on: ubuntu-latest
     outputs:
-      tag-name: ${{ steps.release.outputs.tag_name }}
-      release-created: ${{ steps.release.outputs.release_created }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: google-github-actions/release-please-action@v3
         id: release
@@ -27,13 +27,13 @@ jobs:
 
   tests:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release-created }}
+    if: ${{ needs.release-please.outputs.release_created }}
     name: 'Test OIBus'
     uses: ./.github/workflows/tests.yml
 
   build-binaries:
     needs: tests
-    if: ${{ needs.release-please.outputs.release-created }}
+    if: ${{ needs.release-please.outputs.release_created }}
     name: Build for ${{ matrix.config['friendlyName'] }}
     runs-on: ${{ matrix.config['os'] }}
     strategy:
@@ -71,4 +71,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:
-          gh release upload ${{ needs.release-please.outputs.tag-name }} ./build/bin/${{ matrix.config['archiveName'] }}
+          gh release upload ${{ needs.release-please.outputs.upload_url }} ./build/bin/${{ matrix.config['archiveName'] }}

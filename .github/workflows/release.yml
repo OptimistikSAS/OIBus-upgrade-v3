@@ -16,7 +16,7 @@ jobs:
     name: 'Tag new version'
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.release.outputs.upload_url }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - uses: google-github-actions/release-please-action@v3
@@ -27,8 +27,8 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         run: |
           echo "release_created=steps.release.outputs.release_created" >> $GITHUB_OUTPUT
-          echo "upload_url=steps.release.outputs.upload_url" >> $GITHUB_OUTPUT
-          echo ${{ steps.release.outputs.upload_url }}
+          echo "tag_name=steps.release.outputs.tag_name" >> $GITHUB_OUTPUT
+          echo ${{ steps.release.outputs.tag_name }}
           echo ${{ steps.release.outputs.release_created }}
 
 #  tests:
@@ -77,4 +77,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:
-          gh release upload ${{ needs.release-please.outputs.upload_url }} ./build/bin/${{ matrix.config['archiveName'] }}
+          gh release upload ${{ needs.release-please.outputs.tag_name }} ./build/bin/${{ matrix.config['archiveName'] }}

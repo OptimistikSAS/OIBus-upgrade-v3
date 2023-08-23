@@ -1,9 +1,12 @@
 name: Release OIBus upgrade tool version
 
+
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+
 
 jobs:
   tests:
@@ -16,13 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag-name: ${{ steps.release.outputs.tag_name }}
-      prerelease: ${{ steps.standard-version.outputs.prerelease }}
-      branch-release: ${{ steps.standard-version.outputs.branch-release }}
     steps:
       - uses: google-github-actions/release-please-action@v3
         id: release
         with:
           release-type: node
+          signoff: true
 
   build-binaries:
     needs: release-please

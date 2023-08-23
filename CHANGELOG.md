@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.1.0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.0.1...v0.1.0) (2023-08-23)
+
+
+### Features
+
+* Use please release ([2ae6fcf](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/2ae6fcf4948ac5674603ff0d9e4d2fc7c41bf739))
+
+
+### Bug Fixes
+
+* Add workflow dispatch event ([8301fdb](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/8301fdb075e2212e4ed1bf9157253fa3a3b0a45c))
+* Build binaries needs tests ([dadf293](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/dadf29328cd5798ee0326a96ee0252784fbc1139))
+* change outputs name for upload artifact ([ce7ad55](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/ce7ad55820acae3d6917419fc3c3beeb82de460c))
+* Check release ([e723129](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/e7231297e7e8c5bf7d624aadcb58c7bc83e40dca))
+* checkout with release tag ([bac2ef3](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/bac2ef3eef66906634a8af92e38c35bb221b7add))
+* Fix action trigger ([ad909d9](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/ad909d9a2905b2ea8d1324a83a50af3cf9141ae0))
+* Fix action trigger for tests ([172df0f](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/172df0f3f04c8f392bf82d5e0de6710df84b14fd))
+* properly checks release created ([cec6b97](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/cec6b975af886f6e0bc41766d76179441fc6a676))
+* release-please needs tests ([ef67275](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/ef67275649dd081c0cc5150fcde05e50385ae6e2))
+
 ### 0.0.1 (2023-08-23)
 
 

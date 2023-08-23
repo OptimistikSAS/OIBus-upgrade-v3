@@ -32,7 +32,7 @@ jobs:
     uses: ./.github/workflows/tests.yml
 
   build-binaries:
-    needs: release-please
+    needs: tests
     if: ${{ needs.release-please.outputs.release-created }}
     name: Build for ${{ matrix.config['friendlyName'] }}
     runs-on: ${{ matrix.config['os'] }}

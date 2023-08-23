@@ -59,4 +59,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:
-          gh release upload ${{ jobs.release-please.outputs.tag_name }} ./build/bin/${{ matrix.config['archiveName'] }}
+          gh release upload ${{ needs.release-please.outputs.tag_name }} ./build/bin/${{ matrix.config['archiveName'] }}

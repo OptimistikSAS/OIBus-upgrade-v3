@@ -28,5 +28,14 @@ jobs:
         with:
           cache_version: ${{ secrets.GH_ACTIONS_CACHE_KEY }}
 
+      - name: Run linting
+        shell: bash
+        run: npm run lint
+
+      - name: Check build
+        shell: bash
+        run: npm run build
+
       - name: Run unit tests
-        uses: ./.github/actions/unit_tests
+        shell: bash
+        run: npm test

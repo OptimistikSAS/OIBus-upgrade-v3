@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.2](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.2.1...v0.2.2) (2023-08-24)
+
+
+### Bug Fixes
+
+* **migration:** Limit maxFileSize and maxNumberOfLogs for logger ([567d518](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/567d518d2892322b0cab62f589f3b40f45a43438))
+* **south:** Don't override 0 maxReadInterval ([61dd65a](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/61dd65a927cef7c5ec23c228d5da23ee8811a4bb))
+* **south:** Fix ADS structure migration ([a578afb](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/a578afb2860e80026e77a6721918d0fe6e65ecf3))
+* **south:** Fix MQTT item migration ([033e757](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/033e757c764bc85e8163f63586170d7697d41a95))
+* **south:** Fix ODBC Remote type ([1200ff4](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/1200ff48dc6811a603df3266be8e3700ee99b1d6))
+* **south:** Fix oia and slims item migration ([f69aeae](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/f69aeae4b0c80992f254d2b5d73b75143e5ff926))
+* **south:** Fix request timeout for SQL connectors ([aa3edc6](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/aa3edc6c30582b61fd2e24a0ec23cf85ccfa6779))
+* **south:** Unused _proxies variable in south migration ([97bcdaf](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/97bcdaf5e22bf5f6bbbaa21bd2f5bf14468e9fde))
+
 ## [0.2.1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.2.0...v0.2.1) (2023-08-24)
 
 

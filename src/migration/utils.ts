@@ -445,8 +445,7 @@ const migrateSQL = async (
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
-        connectionTimeout: connector.settings.connectionTimeout,
-        requestTimeout: connector.settings.requestTimeout
+        connectionTimeout: connector.settings.connectionTimeout
       };
     case 'postgresql':
       return {
@@ -465,8 +464,7 @@ const migrateSQL = async (
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
-        connectionTimeout: connector.settings.connectionTimeout,
-        requestTimeout: connector.settings.requestTimeout
+        connectionTimeout: connector.settings.connectionTimeout
       };
     case 'sqlite':
       return {

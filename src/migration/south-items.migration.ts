@@ -125,6 +125,7 @@ export default class SouthItemsMigration {
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
+            requestTimeout: southConnector.settings.requestTimeout,
             dateTimeFields: [
               {
                 fieldName: southConnector.settings.timeColumn,
@@ -181,6 +182,7 @@ export default class SouthItemsMigration {
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
+            requestTimeout: southConnector.settings.requestTimeout,
             dateTimeFields: [
               {
                 fieldName: southConnector.settings.timeColumn,

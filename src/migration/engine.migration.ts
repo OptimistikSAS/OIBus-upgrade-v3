@@ -15,6 +15,9 @@ export default class EngineMigration {
   async migrate(engine: EngineV2): Promise<void> {
     this.logger.info(`Migrating OIBus engine "${engine.name}"`);
     try {
+      const maxFileSize = engine.logParameters.fileLog.maxSize > 10 ? 10 : engine.logParameters.fileLog.maxSize;
+      const maxNumberOfLogs =
+        engine.logParameters.sqliteLog.maxNumberOfLogs < 100_000 ? 100_000 : engine.logParameters.sqliteLog.maxNumberOfLogs;
       const command: EngineSettingsCommandDTO = {
         name: engine.name,
         port: engine.port,
@@ -24,12 +27,12 @@ export default class EngineMigration {
           },
           file: {
             level: convertLogLevel(engine.logParameters.fileLog.level),
-            maxFileSize: engine.logParameters.fileLog.maxSize,
+            maxFileSize: maxFileSize || 5,
             numberOfFiles: engine.logParameters.fileLog.numberOfFiles
           },
           database: {
             level: convertLogLevel(engine.logParameters.sqliteLog.level),
-            maxNumberOfLogs: engine.logParameters.sqliteLog.maxNumberOfLogs
+            maxNumberOfLogs: maxNumberOfLogs
           },
           loki: {
             level: convertLogLevel(engine.logParameters.lokiLog.level),

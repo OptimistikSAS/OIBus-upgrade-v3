@@ -248,7 +248,7 @@ export const migrateSouthSettings = async (connector: SouthV2, encryptionService
       return migrateOPCHDA(connector);
     case 'SQL':
       return await migrateSQL(connector, encryptionService);
-    case 'ODBC (remote)':
+    case 'OdbcRemote':
       return await migrateRemoteODBCSQL(connector);
     case 'RestApi':
       return await migrateRestApi(connector, encryptionService);
@@ -299,7 +299,7 @@ export const convertSouthType = (type: SouthTypeV2, settings: any): string => {
         default:
           throw new Error(`SQL with driver ${settings.driver} unknown in V3`);
       }
-    case 'ODBC (remote)':
+    case 'OdbcRemote':
       return 'odbc';
     default:
       throw new Error(`South connector type ${type} unknown in V3`);

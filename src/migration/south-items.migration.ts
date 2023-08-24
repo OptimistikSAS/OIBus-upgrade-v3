@@ -31,7 +31,7 @@ export default class SouthItemsMigration {
           return await this.createFolderScannerItem(southConnector);
         case 'SQL':
           return await this.createSQLItem(southConnector);
-        case 'ODBC (remote)':
+        case 'OdbcRemote':
           return await this.createODBCItem(southConnector);
         case 'RestApi':
           return await this.createRestApiItem(southConnector);

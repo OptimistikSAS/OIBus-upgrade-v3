@@ -17,18 +17,7 @@ export const NORTH_TYPES_V2 = [
 ];
 export type NorthTypeV2 = (typeof NORTH_TYPES_V2)[number];
 
-export const SOUTH_TYPES_V2 = [
-  'ADS',
-  'FolderScanner',
-  'Modbus',
-  'MQTT',
-  'OPCHDA',
-  'OPCUA_DA',
-  'OPCUA_HA',
-  'RestApi',
-  'SQL',
-  'ODBC (remote)'
-];
+export const SOUTH_TYPES_V2 = ['ADS', 'FolderScanner', 'Modbus', 'MQTT', 'OPCHDA', 'OPCUA_DA', 'OPCUA_HA', 'RestApi', 'SQL', 'OdbcRemote'];
 export type SouthTypeV2 = (typeof SOUTH_TYPES_V2)[number];
 
 export const LOG_LEVEL_V2 = ['trace', 'debug', 'info', 'warning', 'error', 'none'];

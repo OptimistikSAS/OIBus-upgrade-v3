@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.2.1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.2.0...v0.2.1) (2023-08-24)
+
+
+### Bug Fixes
+
+* Add minimist types deps ([07e31d9](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/07e31d9b7de28c3fb6caac0e7ef34c103645dd72))
+
 ## [0.2.0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.1.8...v0.2.0) (2023-08-24)
 
 

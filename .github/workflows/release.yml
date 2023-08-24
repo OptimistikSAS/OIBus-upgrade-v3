@@ -29,14 +29,8 @@ jobs:
           echo "release_created=steps.release.outputs.release_created" >> $GITHUB_OUTPUT
           echo "tag_name=steps.release.outputs.tag_name" >> $GITHUB_OUTPUT
 
-  tests:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    name: 'Test OIBus'
-    uses: ./.github/workflows/tests.yml
-
   build-binaries:
-    needs: [tests, release-please]
+    needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     name: Build for ${{ matrix.config['friendlyName'] }}
     runs-on: ${{ matrix.config['os'] }}

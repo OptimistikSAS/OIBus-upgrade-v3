@@ -559,16 +559,18 @@ const migrateSouthMQTTItem = (connector: SouthV2, item: ItemV2): SouthMQTTItemSe
     valueType: 'json',
     jsonPayload: {
       useArray: !!connector.settings.dataArrayPath,
-      dataArrayPath: connector.settings.dataArrayPath,
-      valuePath: connector.settings.valuePath,
+      dataArrayPath: connector.settings.dataArrayPath || '',
+      pointIdOrigin: connector.settings.nodeIdPath ? 'oibus' : 'payload',
+      pointIdPath: connector.settings.nodeIdPath || '',
+      valuePath: connector.settings.valuePath || '',
       timestampOrigin: connector.settings.timestampOrigin,
       timestampPayload: {
-        timestampPath: connector.settings.timestampPath,
+        timestampPath: connector.settings.timestampPath || '',
         timestampType: 'string',
         timestampFormat: connector.settings.timestampFormat,
         timezone: connector.settings.timestampTimezone
       },
-      otherFields: []
+      otherFields: connector.settings.qualityPath ? [{ name: 'quality', path: connector.settings.qualityPath }] : []
     }
   };
 };

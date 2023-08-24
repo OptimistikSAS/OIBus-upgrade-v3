@@ -120,7 +120,7 @@ const LOG_DB_NAME = 'logs.db';
   await scanModeMigration.migrate(config.engine.scanModes);
 
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await southMigration.migrate(config.south, config.engine.proxies);
+  await southMigration.migrate(config.south);
 
   const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!);
   for (const south of config.south) {

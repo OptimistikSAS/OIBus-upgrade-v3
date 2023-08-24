@@ -312,10 +312,12 @@ export default class SouthItemsMigration {
           settings: {
             endpoint: southConnector.settings.endpoint,
             requestTimeout: southConnector.settings.requestTimeout,
-            queryParams: southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
-              key: queryParam.queryParamKey,
-              value: queryParam.queryParamValue
-            })),
+            queryParams: southConnector.settings.queryParams
+              ? southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
+                  key: queryParam.queryParamKey,
+                  value: queryParam.queryParamValue
+                }))
+              : [],
             body: southConnector.settings.body,
             dateTimeFields: [
               {
@@ -329,7 +331,7 @@ export default class SouthItemsMigration {
             ],
             serialization: {
               type: 'csv',
-              filename: southConnector.settings.filename,
+              filename: southConnector.settings.fileName,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,
@@ -346,13 +348,15 @@ export default class SouthItemsMigration {
           settings: {
             endpoint: southConnector.settings.endpoint,
             requestTimeout: southConnector.settings.requestTimeout,
-            queryParams: southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
-              key: queryParam.queryParamKey,
-              value: queryParam.queryParamValue
-            })),
+            queryParams: southConnector.settings.queryParams
+              ? southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
+                  key: queryParam.queryParamKey,
+                  value: queryParam.queryParamValue
+                }))
+              : [],
             serialization: {
               type: 'csv',
-              filename: southConnector.settings.filename,
+              filename: southConnector.settings.fileName,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
               outputTimestampFormat: southConnector.settings.dateFormat,
               outputTimezone: southConnector.settings.timezone,

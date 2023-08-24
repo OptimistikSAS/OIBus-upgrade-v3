@@ -510,8 +510,7 @@ const migrateRestApi = async (
         host: `${connector.settings.protocol}://${connector.settings.host}:${connector.settings.port}`,
         accessKey: connector.settings.authentication.key,
         secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-        acceptUnauthorized: connector.settings.acceptUnauthorized,
-        timeout: connector.settings.connectionTimeout,
+        acceptUnauthorized: connector.settings.acceptSelfSigned,
         ...(await migrateProxy(undefined, encryptionService))
       };
     case 'SLIMS':
@@ -520,7 +519,7 @@ const migrateRestApi = async (
         port: connector.settings.port,
         username: connector.settings.authentication.key,
         password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-        acceptUnauthorized: connector.settings.acceptUnauthorized,
+        acceptUnauthorized: connector.settings.acceptSelfSigned,
         timeout: connector.settings.connectionTimeout,
         ...(await migrateProxy(undefined, encryptionService))
       };

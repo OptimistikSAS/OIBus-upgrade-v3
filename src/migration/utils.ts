@@ -318,7 +318,7 @@ const migrateAds = (connector: SouthV2): SouthADSSettings => {
     plcName: connector.settings.plcName,
     enumAsText: connector.settings.enumAsText,
     boolAsText: connector.settings.boolAsText,
-    structureFiltering: []
+    structureFiltering: connector.settings.structureFiltering ?? []
   };
 };
 

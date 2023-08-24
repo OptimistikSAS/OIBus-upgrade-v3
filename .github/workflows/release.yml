@@ -43,9 +43,9 @@ jobs:
     strategy:
       matrix:
         config:
-          - { friendlyName: 'Mac OS x64', os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-macos_x64.zip', zip: 'zip -r' }
-          - { friendlyName: 'Windows x64', os: 'windows-latest', platform: 'win',   archiveName: 'oibus-win_x64.zip', zip: '7z a -tzip' }
-          - { friendlyName: 'Linux x64', os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-linux_x64.zip', zip: 'zip -r' }
+          - { friendlyName: 'Mac OS x64', os: 'macos-latest',   platform: 'macos', archiveName: 'oibus-upgrade-tool-macos_x64.zip', zip: 'zip -r' }
+          - { friendlyName: 'Windows x64', os: 'windows-latest', platform: 'win',   archiveName: 'oibus-upgrade-tool-win_x64.zip', zip: '7z a -tzip' }
+          - { friendlyName: 'Linux x64', os: 'ubuntu-latest',  platform: 'linux', archiveName: 'oibus-upgrade-tool-linux_x64.zip', zip: 'zip -r' }
     timeout-minutes: 20
 
     steps:
@@ -63,7 +63,7 @@ jobs:
       - name: Test OIBus run for ${{ matrix.config['friendlyName'] }}
         run: |
           cd ./build/bin/${{ matrix.config['platform'] }}
-          ./oibus --config ../../../data-folder --check true
+          ./oibus-upgrade --config ../../../data-folder --check true
 
       - name: Package OIBus for ${{ matrix.config['friendlyName'] }}
         run: |

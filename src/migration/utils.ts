@@ -9,7 +9,7 @@ import {
   NorthConsoleSettings,
   NorthFileWriterSettings,
   NorthOIAnalyticsSettings,
-  NorthOIConnectSettings
+  NorthOIBusSettings
 } from '../model/north-settings.model';
 import {
   SouthADSItemSettings,
@@ -146,7 +146,7 @@ export const convertNorthType = (type: NorthTypeV2): string => {
     case 'OIAnalytics':
       return 'oianalytics';
     case 'OIConnect':
-      return 'oiconnect';
+      return 'oibus';
     default:
       throw new Error(`North connector type ${type} unknown in V3`);
   }
@@ -210,7 +210,7 @@ const migrateOIConnect = async (
   connector: NorthV2,
   encryptionService: EncryptionService,
   proxies: Array<ProxyV2>
-): Promise<NorthOIConnectSettings> => {
+): Promise<NorthOIBusSettings> => {
   const proxyV2 = connector.settings.proxy ? proxies.find(proxy => proxy.name === connector.settings.proxy) : undefined;
   return {
     host: connector.settings.host,
@@ -325,9 +325,6 @@ const migrateAds = (connector: SouthV2): SouthADSSettings => {
 const migrateFolderScanner = (connector: SouthV2): SouthFolderScannerSettings => {
   return {
     inputFolder: connector.settings.inputFolder,
-    minAge: connector.settings.minAge,
-    preserveFiles: connector.settings.preserveFiles,
-    ignoreModifiedDate: connector.settings.ignoreModifiedDate,
     compression: connector.settings.compression
   };
 };

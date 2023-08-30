@@ -77,7 +77,10 @@ export default class SouthItemsMigration {
       name: southConnector.name,
       scanModeId: scanMode.id,
       settings: {
-        regex: southConnector.settings.regex
+        regex: southConnector.settings.regex,
+        minAge: southConnector.settings.minAge,
+        preserveFiles: southConnector.settings.preserveFiles,
+        ignoreModifiedDate: southConnector.settings.ignoreModifiedDate
       }
     };
     this.repositoryService.southItemRepository.createSouthItem(southConnector.id, command);

@@ -171,7 +171,6 @@ const migrateOIAnalytics = async (
     accessKey: connector.settings.authentication.key,
     secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
     acceptUnauthorized: connector.settings.acceptUnauthorized,
-    timeout: connector.caching.timeout,
     ...(await migrateProxy(proxyV2, encryptionService))
   };
 };
@@ -217,7 +216,6 @@ const migrateOIConnect = async (
     username: connector.settings.authentication.key,
     password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
     acceptUnauthorized: connector.settings.acceptUnauthorized,
-    timeout: connector.caching.timeout,
     ...(await migrateProxy(proxyV2, encryptionService))
   };
 };
@@ -366,12 +364,9 @@ const migrateMQTTAuth = async (settings: any, encryptionService: EncryptionServi
 
 const migrateOPCHDA = (connector: SouthV2): SouthOPCHDASettings => {
   return {
-    agentFilename: connector.settings.agentFilename,
-    tcpPort: connector.settings.tcpPort,
-    logLevel: connector.settings.logLevel,
-    host: connector.settings.host,
-    serverName: connector.settings.serverName,
-    retryInterval: connector.settings.retryInterval,
+    agentUrl: 'http://ip-adress-or-host:2224',
+    retryInterval: 5000,
+    serverUrl: 'opchda://domain.name/Matrikon.OPC.Simulation',
     readTimeout: connector.settings.readTimeout,
     maxReturnValues: connector.settings.maxReturnValues
   };
@@ -477,6 +472,7 @@ const migrateSQL = async (
         }`,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
+        retryInterval: 5000,
         requestTimeout: connector.settings.requestTimeout
       };
     default:
@@ -491,6 +487,7 @@ const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettin
     connectionString: connector.settings.connectionString,
     password: '',
     connectionTimeout: connector.settings.connectionTimeout,
+    retryInterval: 5000,
     requestTimeout: connector.settings.requestTimeout
   };
 };

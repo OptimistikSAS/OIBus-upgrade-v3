@@ -316,7 +316,6 @@ export default class SouthItemsMigration {
           scanModeId: scanMode.id,
           settings: {
             endpoint: southConnector.settings.endpoint,
-            requestTimeout: southConnector.settings.requestTimeout,
             queryParams: southConnector.settings.queryParams
               ? southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
                   key: queryParam.queryParamKey,
@@ -352,7 +351,6 @@ export default class SouthItemsMigration {
           scanModeId: scanMode.id,
           settings: {
             endpoint: southConnector.settings.endpoint,
-            requestTimeout: southConnector.settings.requestTimeout,
             queryParams: southConnector.settings.queryParams
               ? southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
                   key: queryParam.queryParamKey,

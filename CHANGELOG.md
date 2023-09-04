@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.2.2...v0.3.0) (2023-09-04)
+
+
+### Features
+
+* Change OIConnect -&gt; OIBus and adapt FolderScanner ([f52913a](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/f52913ac24ed6e4e223ef0f806e88e3ec67ea425))
+
+
+### Bug Fixes
+
+* Remove unused connection timeouts ([3bd36d9](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/3bd36d9d31d8af2f4c8fdbccbb75f72ca3e4d803))
+
 ## [0.2.2](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.2.1...v0.2.2) (2023-08-24)
 
 

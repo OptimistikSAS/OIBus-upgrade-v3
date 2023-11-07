@@ -1,11 +1,7 @@
 import RepositoryService from '../service/repository.service';
 import pino from 'pino';
-import { EngineV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
-import { EngineSettingsCommandDTO } from '../model/engine.model';
-import { convertAuthentication, convertLogLevel } from './utils';
 import { UserCommandDTO } from '../model/user.model';
-import { Language, Timezone } from '../model/types';
 
 export default class UserMigration {
   constructor(

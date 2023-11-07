@@ -1,13 +1,13 @@
 import { BaseEntity, Instant } from './types';
 
 export const SCOPE_TYPES = ['south', 'north', 'data-stream', 'history-engine', 'history-query', 'web-server', 'logger-service'];
-export type ScopeType = typeof SCOPE_TYPES[number];
+export type ScopeType = (typeof SCOPE_TYPES)[number];
 
 export const LOG_LEVELS = ['silent', 'error', 'warn', 'info', 'debug', 'trace'];
-export type LogLevel = typeof LOG_LEVELS[number];
+export type LogLevel = (typeof LOG_LEVELS)[number];
 
 export const AUTHENTICATION_TYPES = ['none', 'basic', 'bearer', 'api-key', 'cert'];
-export type AuthenticationType = typeof AUTHENTICATION_TYPES[number];
+export type AuthenticationType = (typeof AUTHENTICATION_TYPES)[number];
 
 /**
  * Base settings for log parameters
@@ -106,7 +106,7 @@ export interface BaseConnectorMetrics {
 export interface NorthConnectorMetrics extends BaseConnectorMetrics {
   numberOfValuesSent: number;
   numberOfFilesSent: number;
-  lastValueSent: any | null;
+  lastValueSent: OIBusDataValue | null;
   lastFileSent: string | null;
   cacheSize: number;
 }
@@ -116,7 +116,7 @@ export interface SouthHistoryMetrics {}
 export interface SouthConnectorMetrics extends BaseConnectorMetrics {
   numberOfValuesRetrieved: number;
   numberOfFilesRetrieved: number;
-  lastValueRetrieved: any | null;
+  lastValueRetrieved: OIBusDataValue | null;
   lastFileRetrieved: string | null;
   historyMetrics: SouthHistoryMetrics;
 }
@@ -148,4 +148,19 @@ export interface EngineMetrics {
   minArrayBuffers: number;
   currentArrayBuffers: number;
   maxArrayBuffers: number;
+}
+
+export interface HomeMetrics {
+  norths: Record<string, NorthConnectorMetrics>;
+  engine: EngineMetrics;
+  souths: Record<string, SouthConnectorMetrics>;
+}
+
+export interface OIBusDataValue {
+  pointId: string;
+  timestamp: Instant;
+  data: {
+    value: string;
+    [key: string]: any;
+  };
 }

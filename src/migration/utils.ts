@@ -168,9 +168,11 @@ const migrateOIAnalytics = async (
   const proxyV2 = connector.settings.proxy ? proxies.find(proxy => proxy.name === connector.settings.proxy) : undefined;
   return {
     host: connector.settings.host,
+    authentication: 'basic',
     accessKey: connector.settings.authentication.key,
     secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
     acceptUnauthorized: connector.settings.acceptUnauthorized,
+    timeout: 30,
     ...(await migrateProxy(proxyV2, encryptionService))
   };
 };
@@ -216,6 +218,7 @@ const migrateOIConnect = async (
     username: connector.settings.authentication.key,
     password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
     acceptUnauthorized: connector.settings.acceptUnauthorized,
+    timeout: 30,
     ...(await migrateProxy(proxyV2, encryptionService))
   };
 };
@@ -365,10 +368,9 @@ const migrateMQTTAuth = async (settings: any, encryptionService: EncryptionServi
 const migrateOPCHDA = (connector: SouthV2): SouthOPCHDASettings => {
   return {
     agentUrl: 'http://ip-adress-or-host:2224',
-    retryInterval: 5000,
-    serverUrl: 'opchda://domain.name/Matrikon.OPC.Simulation',
-    readTimeout: connector.settings.readTimeout,
-    maxReturnValues: connector.settings.maxReturnValues
+    retryInterval: connector.settings.retryInterval,
+    host: connector.settings.host,
+    serverName: connector.settings.serverName
   };
 };
 
@@ -503,6 +505,7 @@ const migrateRestApi = async (
         accessKey: connector.settings.authentication.key,
         secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
         acceptUnauthorized: connector.settings.acceptSelfSigned,
+        timeout: 30,
         ...(await migrateProxy(undefined, encryptionService))
       };
     case 'SLIMS':
@@ -512,7 +515,7 @@ const migrateRestApi = async (
         username: connector.settings.authentication.key,
         password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
         acceptUnauthorized: connector.settings.acceptSelfSigned,
-        timeout: connector.settings.connectionTimeout,
+        timeout: 30,
         ...(await migrateProxy(undefined, encryptionService))
       };
     default:
@@ -625,8 +628,8 @@ const convertOPCUAResampling = (aggregate: string | undefined): SouthOPCUAItemSe
 const migrateOPCHDAItem = (connector: SouthV2, item: ItemV2): SouthOPCHDAItemSettings => {
   const scanGroup = connector.settings.scanGroups.find((group: any) => group.scanMode === item.scanMode);
   return {
-    aggregate: scanGroup?.aggregate || 'Raw',
-    resampling: scanGroup?.resampling || 'None',
+    aggregate: scanGroup?.aggregate || 'raw',
+    resampling: scanGroup?.resampling || 'none',
     nodeId: item.nodeId
   };
 };

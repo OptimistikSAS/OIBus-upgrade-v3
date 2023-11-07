@@ -57,6 +57,7 @@ export default class SouthItemsMigration {
         }
         const command: SouthConnectorItemCommandDTO = {
           name: item.pointId,
+          enabled: true,
           scanModeId: scanMode?.id || 'subscription',
           settings: migrateItemSettings(southConnector, item)
         };
@@ -75,6 +76,7 @@ export default class SouthItemsMigration {
     }
     const command: SouthConnectorItemCommandDTO<SouthFolderScannerItemSettings> = {
       name: southConnector.name,
+      enabled: true,
       scanModeId: scanMode.id,
       settings: {
         regex: southConnector.settings.regex,
@@ -97,6 +99,7 @@ export default class SouthItemsMigration {
       case 'mssql':
         const mssqlCommand: SouthConnectorItemCommandDTO<SouthMSSQLItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -125,6 +128,7 @@ export default class SouthItemsMigration {
       case 'mysql':
         const mysqlItemCommand: SouthConnectorItemCommandDTO<SouthMySQLItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -154,6 +158,7 @@ export default class SouthItemsMigration {
       case 'postgresql':
         const postgresqlCommand: SouthConnectorItemCommandDTO<SouthPostgreSQLItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -182,6 +187,7 @@ export default class SouthItemsMigration {
       case 'oracle':
         const oracleCommand: SouthConnectorItemCommandDTO<SouthOracleItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -211,6 +217,7 @@ export default class SouthItemsMigration {
       case 'sqlite':
         const sqliteCommand: SouthConnectorItemCommandDTO<SouthSQLiteItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -239,6 +246,7 @@ export default class SouthItemsMigration {
       case 'odbc':
         const odbcCommand: SouthConnectorItemCommandDTO<SouthSQLiteItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             query: southConnector.settings.query,
@@ -277,6 +285,7 @@ export default class SouthItemsMigration {
     }
     const odbcCommand: SouthConnectorItemCommandDTO<SouthSQLiteItemSettings> = {
       name: southConnector.name,
+      enabled: true,
       scanModeId: scanMode.id,
       settings: {
         query: southConnector.settings.query,
@@ -313,6 +322,7 @@ export default class SouthItemsMigration {
       case 'SLIMS':
         const slimsCommand: SouthConnectorItemCommandDTO<SouthSlimsItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             endpoint: southConnector.settings.endpoint,
@@ -348,6 +358,7 @@ export default class SouthItemsMigration {
       case 'OIAnalytics time values':
         const oiaCommand: SouthConnectorItemCommandDTO<SouthOIAnalyticsItemSettings> = {
           name: southConnector.name,
+          enabled: true,
           scanModeId: scanMode.id,
           settings: {
             endpoint: southConnector.settings.endpoint,

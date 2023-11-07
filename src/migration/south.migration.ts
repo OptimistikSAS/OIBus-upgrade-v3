@@ -25,7 +25,8 @@ export default class SouthMigration {
           history: {
             maxInstantPerItem: connector.type !== 'OPCUA_HA' && connector.type !== 'OPCHDA',
             maxReadInterval: connector.settings.maxReadInterval ?? 60,
-            readDelay: connector.settings.readIntervalDelay || 200
+            readDelay: connector.settings.readIntervalDelay || 200,
+            overlap: connector.settings.overlap || 0
           },
           settings: await migrateSouthSettings(connector, this.encryptionService, this.logger)
         };

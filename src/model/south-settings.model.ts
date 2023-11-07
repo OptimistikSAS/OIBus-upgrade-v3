@@ -19,7 +19,7 @@ export type SouthModbusSettingsEndianness = (typeof SOUTH_MODBUS_SETTINGS_ENDIAN
 const SOUTH_MODBUS_ITEM_SETTINGS_MODBUS_TYPES = ['coil', 'discreteInput', 'inputRegister', 'holdingRegister'] as const
 export type SouthModbusItemSettingsModbusType = (typeof SOUTH_MODBUS_ITEM_SETTINGS_MODBUS_TYPES)[number];
 
-const SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES = ['UInt16', 'Int16', 'UInt32', 'Int32', 'BigUInt64', 'BigInt64', 'Float', 'Double'] as const
+const SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES = ['Bit', 'UInt16', 'Int16', 'UInt32', 'Int32', 'BigUInt64', 'BigInt64', 'Float', 'Double'] as const
 export type SouthModbusItemSettingsDataType = (typeof SOUTH_MODBUS_ITEM_SETTINGS_DATA_TYPES)[number];
 
 const SOUTH_M_Q_T_T_SETTINGS_AUTHENTICATION_TYPES = ['none', 'basic', 'cert'] as const
@@ -73,10 +73,10 @@ export type SouthOIAnalyticsItemSettingsSerializationType = (typeof SOUTH_O_I_AN
 const SOUTH_O_I_ANALYTICS_ITEM_SETTINGS_SERIALIZATION_DELIMITERS = ['DOT', 'SEMI_COLON', 'COLON', 'COMMA', 'NON_BREAKING_SPACE', 'SLASH', 'TAB', 'PIPE'] as const
 export type SouthOIAnalyticsItemSettingsSerializationDelimiter = (typeof SOUTH_O_I_ANALYTICS_ITEM_SETTINGS_SERIALIZATION_DELIMITERS)[number];
 
-const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES = ['Raw', 'Average', 'Minimum', 'Maximum', 'Count'] as const
+const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES = ['raw', 'average', 'minimum', 'maximum'] as const
 export type SouthOPCHDAItemSettingsAggregate = (typeof SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_AGGREGATES)[number];
 
-const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS = ['None', 'Second', '10 Seconds', '30 Seconds', 'Minute', 'Hour', 'Day'] as const
+const SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS = ['none', 'second', '10Seconds', '30Seconds', 'minute', 'hour', 'day'] as const
 export type SouthOPCHDAItemSettingsResampling = (typeof SOUTH_O_P_C_H_D_A_ITEM_SETTINGS_RESAMPLINGS)[number];
 
 const SOUTH_O_P_C_U_A_SETTINGS_AUTHENTICATION_TYPES = ['none', 'basic', 'cert'] as const
@@ -232,6 +232,7 @@ export interface SouthODBCSettings extends BaseSouthSettings {
 export interface SouthOIAnalyticsSettings extends BaseSouthSettings {
   host: string;
   acceptUnauthorized: boolean;
+  timeout: number;
   accessKey: string;
   secretKey: string | null;
   useProxy: boolean;
@@ -243,9 +244,8 @@ export interface SouthOIAnalyticsSettings extends BaseSouthSettings {
 export interface SouthOPCHDASettings extends BaseSouthSettings {
   agentUrl: string;
   retryInterval: number;
-  serverUrl: string;
-  readTimeout: number;
-  maxReturnValues: number;
+  host: string;
+  serverName: string;
 }
 
 export interface SouthOPCUASettings extends BaseSouthSettings {
@@ -280,6 +280,7 @@ export interface SouthSlimsSettings extends BaseSouthSettings {
   url: string;
   port: number;
   acceptUnauthorized: boolean;
+  timeout: number;
   username: string;
   password: string | null;
   useProxy: boolean;
@@ -498,6 +499,7 @@ export interface SouthModbusItemSettings extends BaseSouthItemSettings {
   address: string;
   modbusType: SouthModbusItemSettingsModbusType;
   dataType?: SouthModbusItemSettingsDataType;
+  bitIndex?: number;
   multiplierCoefficient?: number;
 }
 
@@ -509,20 +511,20 @@ export interface SouthMQTTItemSettings extends BaseSouthItemSettings {
 
 export interface SouthMSSQLItemSettings extends BaseSouthItemSettings {
   query: string;
-  dateTimeFields: Array<SouthMSSQLItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthMSSQLItemSettingsDateTimeFields> | null;
   serialization: SouthMSSQLItemSettingsSerialization;
 }
 
 export interface SouthMySQLItemSettings extends BaseSouthItemSettings {
   query: string;
   requestTimeout: number;
-  dateTimeFields: Array<SouthMySQLItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthMySQLItemSettingsDateTimeFields> | null;
   serialization: SouthMySQLItemSettingsSerialization;
 }
 
 export interface SouthODBCItemSettings extends BaseSouthItemSettings {
   query: string;
-  dateTimeFields: Array<SouthODBCItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthODBCItemSettingsDateTimeFields> | null;
   serialization: SouthODBCItemSettingsSerialization;
 }
 
@@ -535,7 +537,7 @@ export interface SouthOIAnalyticsItemSettings extends BaseSouthItemSettings {
 export interface SouthOPCHDAItemSettings extends BaseSouthItemSettings {
   nodeId: string;
   aggregate: SouthOPCHDAItemSettingsAggregate;
-  resampling: SouthOPCHDAItemSettingsResampling;
+  resampling?: SouthOPCHDAItemSettingsResampling;
 }
 
 export interface SouthOPCUAItemSettings extends BaseSouthItemSettings {
@@ -547,13 +549,13 @@ export interface SouthOPCUAItemSettings extends BaseSouthItemSettings {
 export interface SouthOracleItemSettings extends BaseSouthItemSettings {
   query: string;
   requestTimeout: number;
-  dateTimeFields: Array<SouthOracleItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthOracleItemSettingsDateTimeFields> | null;
   serialization: SouthOracleItemSettingsSerialization;
 }
 
 export interface SouthPostgreSQLItemSettings extends BaseSouthItemSettings {
   query: string;
-  dateTimeFields: Array<SouthPostgreSQLItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthPostgreSQLItemSettingsDateTimeFields> | null;
   serialization: SouthPostgreSQLItemSettingsSerialization;
 }
 
@@ -561,13 +563,13 @@ export interface SouthSlimsItemSettings extends BaseSouthItemSettings {
   endpoint: string;
   body: string | null;
   queryParams: Array<SouthSlimsItemSettingsQueryParams> | null;
-  dateTimeFields: Array<SouthSlimsItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthSlimsItemSettingsDateTimeFields> | null;
   serialization: SouthSlimsItemSettingsSerialization;
 }
 
 export interface SouthSQLiteItemSettings extends BaseSouthItemSettings {
   query: string;
-  dateTimeFields: Array<SouthSQLiteItemSettingsDateTimeFields>;
+  dateTimeFields: Array<SouthSQLiteItemSettingsDateTimeFields> | null;
   serialization: SouthSQLiteItemSettingsSerialization;
 }
 

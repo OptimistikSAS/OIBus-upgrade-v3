@@ -19,7 +19,7 @@ export default class EngineRepository {
    */
   getEngineSettings(): EngineSettingsDTO | null {
     const query =
-      'SELECT id, name, port, ' +
+      'SELECT id, name, port, proxy_enabled AS proxyEnabled, proxy_port AS proxyPort, ' +
       'log_console_level AS consoleLogLevel, ' +
       'log_file_level AS fileLogLevel, ' +
       'log_file_max_file_size AS fileLogMaxFileSize, ' +
@@ -29,9 +29,10 @@ export default class EngineRepository {
       'log_loki_level AS lokiLogLevel, ' +
       'log_loki_interval AS lokiLogInterval, ' +
       'log_loki_address AS lokiLogAddress, ' +
-      'log_loki_token_address AS lokiLogTokenAddress, ' +
       'log_loki_username AS lokiLogUsername, ' +
-      'log_loki_password AS lokiLogPassword ' +
+      'log_loki_password AS lokiLogPassword, ' +
+      'log_oia_level AS oiaLogLevel, ' +
+      'log_oia_interval AS oiaLogInterval ' +
       `FROM ${ENGINES_TABLE};`;
     const results: Array<any> = this.database.prepare(query).all();
 
@@ -40,6 +41,8 @@ export default class EngineRepository {
         id: results[0].id,
         name: results[0].name,
         port: results[0].port,
+        proxyEnabled: Boolean(results[0].proxyEnabled),
+        proxyPort: results[0].proxyPort,
         logParameters: {
           console: {
             level: results[0].consoleLogLevel
@@ -57,9 +60,12 @@ export default class EngineRepository {
             level: results[0].lokiLogLevel,
             interval: results[0].lokiLogInterval,
             address: results[0].lokiLogAddress,
-            tokenAddress: results[0].lokiLogTokenAddress,
             username: results[0].lokiLogUsername,
             password: results[0].lokiLogPassword
+          },
+          oia: {
+            level: results[0].oiaLogLevel,
+            interval: results[0].oiaLogInterval
           }
         }
       };
@@ -73,7 +79,7 @@ export default class EngineRepository {
    */
   updateEngineSettings(command: EngineSettingsCommandDTO): void {
     const query =
-      `UPDATE ${ENGINES_TABLE} SET name = ?, port = ?, ` +
+      `UPDATE ${ENGINES_TABLE} SET name = ?, port = ?, proxy_enabled = ?, proxy_port = ?, ` +
       'log_console_level = ?, ' +
       'log_file_level = ?, ' +
       'log_file_max_file_size = ?, ' +
@@ -83,9 +89,10 @@ export default class EngineRepository {
       'log_loki_level = ?, ' +
       'log_loki_interval = ?, ' +
       'log_loki_address = ?, ' +
-      'log_loki_token_address = ?, ' +
       'log_loki_username = ?, ' +
-      'log_loki_password = ? ' +
+      'log_loki_password = ?, ' +
+      'log_oia_level = ?, ' +
+      'log_oia_interval = ? ' +
       `WHERE rowid=(SELECT MIN(rowid) FROM ${ENGINES_TABLE});`;
 
     this.database
@@ -93,6 +100,8 @@ export default class EngineRepository {
       .run(
         command.name,
         command.port,
+        +command.proxyEnabled,
+        command.proxyPort,
         command.logParameters.console.level,
         command.logParameters.file.level,
         command.logParameters.file.maxFileSize,
@@ -102,9 +111,10 @@ export default class EngineRepository {
         command.logParameters.loki.level,
         command.logParameters.loki.interval,
         command.logParameters.loki.address,
-        command.logParameters.loki.tokenAddress,
         command.logParameters.loki.username,
-        command.logParameters.loki.password
+        command.logParameters.loki.password,
+        command.logParameters.oia.level,
+        command.logParameters.oia.interval
       );
   }
 
@@ -117,16 +127,19 @@ export default class EngineRepository {
     }
 
     const query =
-      `INSERT INTO ${ENGINES_TABLE} (id, name, port, log_console_level, ` +
+      `INSERT INTO ${ENGINES_TABLE} (id, name, port, proxy_enabled, proxy_port, log_console_level, ` +
       'log_file_level, log_file_max_file_size, log_file_number_of_files, log_database_level, ' +
-      'log_database_max_number_of_logs, log_loki_level, log_loki_interval, log_loki_address, log_loki_token_address, ' +
-      'log_loki_username, log_loki_password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);';
+      'log_database_max_number_of_logs, log_loki_level, log_loki_interval, log_loki_address, ' +
+      'log_loki_username, log_loki_password, log_oia_level, log_oia_interval) ' +
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);';
     this.database
       .prepare(query)
       .run(
         generateRandomId(),
         command.name,
         command.port,
+        +command.proxyEnabled,
+        command.proxyPort,
         command.logParameters.console.level,
         command.logParameters.file.level,
         command.logParameters.file.maxFileSize,
@@ -136,9 +149,10 @@ export default class EngineRepository {
         command.logParameters.loki.level,
         command.logParameters.loki.interval,
         command.logParameters.loki.address,
-        command.logParameters.loki.tokenAddress,
         command.logParameters.loki.username,
-        command.logParameters.loki.password
+        command.logParameters.loki.password,
+        command.logParameters.oia.level,
+        command.logParameters.oia.interval
       );
   }
 }

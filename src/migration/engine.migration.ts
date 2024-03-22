@@ -21,6 +21,8 @@ export default class EngineMigration {
       const command: EngineSettingsCommandDTO = {
         name: engine.name,
         port: engine.port,
+        proxyEnabled: false,
+        proxyPort: 9000,
         logParameters: {
           console: {
             level: convertLogLevel(engine.logParameters.consoleLog.level)
@@ -35,14 +37,15 @@ export default class EngineMigration {
             maxNumberOfLogs: maxNumberOfLogs
           },
           loki: {
-            level: convertLogLevel(engine.logParameters.lokiLog.level),
+            level: 'silent',
             interval: engine.logParameters.lokiLog.interval,
-            address: engine.logParameters.lokiLog.lokiAddress,
-            tokenAddress: engine.logParameters.lokiLog.tokenAddress,
-            username: engine.logParameters.lokiLog.username,
-            password: engine.logParameters.lokiLog.password
-              ? await this.encryptionService.convertCiphering(engine.logParameters.lokiLog.password)
-              : ''
+            address: '',
+            username: '',
+            password: ''
+          },
+          oia: {
+            level: 'silent',
+            interval: 10
           }
         }
       };

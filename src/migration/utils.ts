@@ -167,13 +167,17 @@ const migrateOIAnalytics = async (
 ): Promise<NorthOIAnalyticsSettings> => {
   const proxyV2 = connector.settings.proxy ? proxies.find(proxy => proxy.name === connector.settings.proxy) : undefined;
   return {
-    host: connector.settings.host,
-    authentication: 'basic',
-    accessKey: connector.settings.authentication.key,
-    secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-    acceptUnauthorized: connector.settings.acceptUnauthorized,
+    useOiaModule: false,
     timeout: 30,
-    ...(await migrateProxy(proxyV2, encryptionService))
+    compress: false,
+    specificSettings: {
+      host: connector.settings.host,
+      authentication: 'basic',
+      accessKey: connector.settings.authentication.key,
+      secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
+      acceptUnauthorized: connector.settings.acceptUnauthorized,
+      ...(await migrateProxy(proxyV2, encryptionService))
+    }
   };
 };
 
@@ -501,12 +505,16 @@ const migrateRestApi = async (
   switch (connector.settings.payloadParser) {
     case 'OIAnalytics time values':
       return {
-        host: `${connector.settings.protocol}://${connector.settings.host}:${connector.settings.port}`,
-        accessKey: connector.settings.authentication.key,
-        secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-        acceptUnauthorized: connector.settings.acceptSelfSigned,
+        useOiaModule: false,
         timeout: 30,
-        ...(await migrateProxy(undefined, encryptionService))
+        specificSettings: {
+          host: `${connector.settings.protocol}://${connector.settings.host}:${connector.settings.port}`,
+          authentication: 'basic',
+          accessKey: connector.settings.authentication.key,
+          secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
+          acceptUnauthorized: connector.settings.acceptSelfSigned,
+          ...(await migrateProxy(undefined, encryptionService))
+        }
       };
     case 'SLIMS':
       return {

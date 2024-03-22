@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.3.2](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.3.1...v0.3.2) (2024-03-22)
+
+
+### Bug Fixes
+
+* Adapt migration for 3.2 ([01bda13](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/01bda1358b7acdaf8a9f4cc38d2f9fbf1e678349))
+
 ## [0.3.1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.3.0...v0.3.1) (2023-11-07)
 
 

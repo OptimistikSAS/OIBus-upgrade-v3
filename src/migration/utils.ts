@@ -45,9 +45,10 @@ export const convertLogLevel = (logLevel: LogLevelV2): LogLevel => {
     case 'trace':
     case 'debug':
     case 'info':
-    case 'warning':
     case 'error':
       return logLevel;
+    case 'warning':
+      return 'warn';
     case 'none':
     default:
       return 'silent';

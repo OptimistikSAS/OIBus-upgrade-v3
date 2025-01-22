@@ -5,7 +5,6 @@ import LoggerService from './service/logger/logger.service';
 import migrationLegacy from './migration/legacy/migration.service.js';
 import { OIBusV2Config } from './model/config.model';
 import RepositoryService from './service/repository.service';
-import ExternalSourcesMigration from './migration/external-sources.migration';
 import IPFiltersMigration from './migration/ip-filters.migration';
 import EncryptionService from './service/encryption.service';
 import EngineMigration from './migration/engine.migration';
@@ -13,9 +12,9 @@ import UserMigration from './migration/user.migration';
 import ScanModesMigration from './migration/scan-modes.migration';
 import NorthMigration from './migration/north.migration';
 import SouthMigration from './migration/south.migration';
-import SouthItemsMigration from './migration/south-items.migration';
 import SouthCacheMigration from './migration/cache.migration';
 import fs from 'node:fs/promises';
+import DataFolderMigration from './migration/data-folder.migration';
 
 const CONFIG_FILE_NAME = 'oibus.json';
 
@@ -92,7 +91,7 @@ const LOG_DB_NAME = 'logs.db';
     path.resolve(CRYPTO_DATABASE),
     path.resolve(CACHE_FOLDER, CACHE_DATABASE)
   );
-  const oibusSettings = repositoryService.engineRepository.getEngineSettings();
+  const oibusSettings = repositoryService.engineRepository.get();
   if (!oibusSettings) {
     console.error('Error while loading OIBus settings from database');
     return;
@@ -104,13 +103,10 @@ const LOG_DB_NAME = 'logs.db';
   }
   const encryptionService = new EncryptionService(cryptoSettings);
 
-  const externalSourcesMigration = new ExternalSourcesMigration(repositoryService, loggerService.logger!);
-  await externalSourcesMigration.migrate(config.engine.externalSources);
-
   const ipFiltersMigration = new IPFiltersMigration(repositoryService, loggerService.logger!);
   await ipFiltersMigration.migrate(config.engine.filter);
 
-  const engineMigration = new EngineMigration(repositoryService, loggerService.logger!, encryptionService);
+  const engineMigration = new EngineMigration(repositoryService, loggerService.logger!);
   await engineMigration.migrate(config.engine);
 
   const userMigration = new UserMigration(repositoryService, loggerService.logger!, encryptionService);
@@ -122,11 +118,6 @@ const LOG_DB_NAME = 'logs.db';
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
   await southMigration.migrate(config.south);
 
-  const itemMigration = new SouthItemsMigration(repositoryService, loggerService.logger!);
-  for (const south of config.south) {
-    await itemMigration.migrate(south);
-  }
-
   const southCacheMigration = new SouthCacheMigration(repositoryService, loggerService.logger!);
   const SOUTH_WITH_CACHE = ['OPCUA_HA', 'OPCHDA', 'SQL', 'RestApi'];
   await southCacheMigration.migrate(
@@ -137,15 +128,18 @@ const LOG_DB_NAME = 'logs.db';
   const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
   await northMigration.migrate(config.north, config.engine.proxies);
 
-  // Removing obsolete files
+  const dataFolderMigration = new DataFolderMigration(baseDir, loggerService.logger!);
+  await dataFolderMigration.migrate();
 
+  // Removing obsolete files
   await deleteFile(path.resolve(LOG_FOLDER_NAME, 'journal.db'), loggerService.logger!);
   await deleteFile(path.resolve(CONFIG_FILE_NAME), loggerService.logger!);
   await deleteFile(path.resolve('./history-query.db'), loggerService.logger!);
 
-  await fs.rm(path.resolve('./certs/opcua'), { recursive: true, force: true });
+  await fs.rm(path.resolve('./certs'), { recursive: true, force: true });
   await fs.rm(path.resolve(CACHE_FOLDER, 'archived'), { recursive: true, force: true });
-  await fs.rm(path.resolve(CACHE_FOLDER, 'keys'), { recursive: true, force: true });
+  await fs.rm(path.resolve(CACHE_FOLDER, 'history-query'), { recursive: true, force: true });
+  await fs.rm(path.resolve('./keys'), { recursive: true, force: true });
 
   loggerService.logger!.info('OIBus migration completed. Please restart OIBus');
 })();

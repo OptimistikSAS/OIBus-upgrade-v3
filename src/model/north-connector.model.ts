@@ -1,90 +1,30 @@
-import { OibFormControl } from './form.model';
-import { BaseEntity, Instant } from './types';
+import { BaseEntity } from './types';
 import { NorthSettings } from './north-settings.model';
-import { OIBusSubscription } from './subscription.model';
+import { SouthConnectorEntityLight } from './south-connector.model';
+import { OIBusNorthType } from './engine.model';
 
-export interface NorthCacheSettingsDTO {
-  scanModeId: string;
-  retryInterval: number;
-  retryCount: number;
-  groupCount: number;
-  maxSendCount: number;
-  sendFileImmediately: boolean;
-  maxSize: number;
-}
-
-export interface NorthArchiveSettings {
-  enabled: boolean;
-  retentionDuration: number;
-}
-
-export interface NorthType {
-  id: string;
-  category: string;
+export interface NorthConnectorEntity<T extends NorthSettings> extends BaseEntity {
   name: string;
-  description: string;
-  modes: {
-    files: boolean;
-    points: boolean;
-  };
-}
-
-/**
- * DTO for North connectors
- */
-export interface NorthConnectorDTO<T extends NorthSettings = any> extends BaseEntity {
-  name: string;
-  type: string;
+  type: OIBusNorthType;
   description: string;
   enabled: boolean;
   settings: T;
-  caching: NorthCacheSettingsDTO;
-  archive: NorthArchiveSettings;
-}
-
-/**
- * Command DTO for North connector
- */
-export interface NorthConnectorCommandDTO<T extends NorthSettings = any> {
-  name: string;
-  type: string;
-  description: string;
-  enabled: boolean;
-  settings: T;
-  caching: NorthCacheSettingsDTO;
-  archive: NorthArchiveSettings;
-}
-
-/**
- * Command DTO for South connector
- */
-export interface NorthConnectorWithItemsCommandDTO<> {
-  north: NorthConnectorDTO;
-  subscriptions: Array<OIBusSubscription>;
-  subscriptionsToDelete: Array<OIBusSubscription>;
-}
-
-export interface NorthConnectorManifest {
-  id: string;
-  category: string;
-  name: string;
-  description: string;
-  modes: {
-    files: boolean;
-    points: boolean;
+  caching: {
+    scanModeId: string;
+    retryInterval: number;
+    retryCount: number;
+    maxSize: number;
+    oibusTimeValues: {
+      groupCount: number;
+      maxSendCount: number;
+    };
+    rawFiles: {
+      sendFileImmediately: boolean;
+      archive: {
+        enabled: boolean;
+        retentionDuration: number;
+      };
+    };
   };
-  settings: Array<OibFormControl>;
-}
-
-export interface NorthCacheFiles {
-  filename: string;
-  modificationDate: Instant;
-  size: number;
-}
-
-export interface NorthArchiveFiles extends NorthCacheFiles {}
-
-export interface NorthValueFiles {
-  filename: string;
-  valuesCount: number;
+  subscriptions: Array<SouthConnectorEntityLight>;
 }

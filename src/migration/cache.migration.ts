@@ -9,7 +9,10 @@ import { DateTime } from 'luxon';
 import fs from 'node:fs/promises';
 
 export default class SouthCacheMigration {
-  constructor(private readonly repositoryService: RepositoryService, private readonly logger: pino.Logger) {}
+  constructor(
+    private readonly repositoryService: RepositoryService,
+    private readonly logger: pino.Logger
+  ) {}
 
   async migrate(connectors: Array<SouthV2> = [], cacheFolder: string): Promise<void> {
     this.logger.info(`Migrating cache for ${connectors.length} South connectors`);
@@ -32,7 +35,7 @@ export default class SouthCacheMigration {
           const associatedScanMode = entry.name.split('-', 2);
           const foundScanMode = this.repositoryService.scanModeRepository.getByName(associatedScanMode[1]);
           if (foundScanMode && maxInstant) {
-            this.repositoryService.southCacheRepository.createOrUpdateCacheScanMode({
+            this.repositoryService.southCacheRepository.save({
               southId: connector.id,
               scanModeId: foundScanMode.id,
               itemId: this.getAssociatedItemId(connector),
@@ -53,7 +56,7 @@ export default class SouthCacheMigration {
     switch (connector.type) {
       case 'SQL':
       case 'RestApi': {
-        const southItems = this.repositoryService.southItemRepository.getSouthItems(connector.id);
+        const southItems = this.repositoryService.southConnectorRepository.findAllItemsForSouth(connector.id);
         return southItems[0].id;
       }
       default:

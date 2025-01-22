@@ -12,26 +12,15 @@ export default class SouthCacheRepository {
     this._database = database;
   }
 
-  /**
-   * Retrieve a South connector cache scan mode
-   */
-  getSouthCacheScanMode(southId: string, scanModeId: string, itemId: string): SouthCache | null {
-    const query = `SELECT south_id AS southId, scan_mode_id AS scanModeId, item_id AS itemId, max_instant AS maxInstant FROM ${SOUTH_CACHE_TABLE} WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
-    const result: SouthCache | undefined = this._database.prepare(query).get(southId, scanModeId, itemId) as SouthCache;
+  getSouthCache(southId: string, scanModeId: string, itemId: string): SouthCache | null {
+    const query = `SELECT south_id, scan_mode_id, item_id, max_instant FROM ${SOUTH_CACHE_TABLE} WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
+    const result = this._database.prepare(query).get(southId, scanModeId, itemId);
     if (!result) return null;
-    return {
-      southId: result.southId,
-      scanModeId: result.scanModeId,
-      itemId: result.itemId,
-      maxInstant: result.maxInstant
-    };
+    return this.toSouthCache(result as Record<string, string>);
   }
 
-  /**
-   * Create or update a South connector cache scan mode with the scan mode ID as primary key
-   */
-  createOrUpdateCacheScanMode(command: SouthCache): void {
-    const foundScanMode = this.getSouthCacheScanMode(command.southId, command.scanModeId, command.itemId);
+  save(command: SouthCache): void {
+    const foundScanMode = this.getSouthCache(command.southId, command.scanModeId, command.itemId);
     if (!foundScanMode) {
       const insertQuery = `INSERT INTO ${SOUTH_CACHE_TABLE} (south_id, scan_mode_id, item_id, max_instant) VALUES (?, ?, ?, ?);`;
       this._database.prepare(insertQuery).run(command.southId, command.scanModeId, command.itemId, command.maxInstant);
@@ -41,28 +30,17 @@ export default class SouthCacheRepository {
     }
   }
 
-  /**
-   * Delete a South connector cache scan mode by its scan mode ID
-   */
-  deleteCacheScanMode(southId: string, scanModeId: string, itemId: string): void {
+  delete(southId: string, scanModeId: string, itemId: string): void {
     const query = `DELETE FROM ${SOUTH_CACHE_TABLE} WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
     this._database.prepare(query).run(southId, scanModeId, itemId);
   }
 
-  resetSouthCacheDatabase(): void {
-    const query = `DELETE FROM ${SOUTH_CACHE_TABLE};`;
-    this._database.prepare(query).run();
-  }
-
-  createCustomTable(tableName: string, fields: string): void {
-    this._database.prepare(`CREATE TABLE IF NOT EXISTS ${tableName} (${fields});`).run();
-  }
-
-  runQueryOnCustomTable(query: string, params: Array<any>): any {
-    this._database.prepare(query).run(...params);
-  }
-
-  getQueryOnCustomTable(query: string, params: Array<any>): any {
-    return this._database.prepare(query).get(...params);
+  private toSouthCache(result: Record<string, string>): SouthCache {
+    return {
+      southId: result.south_id,
+      scanModeId: result.scan_mode_id,
+      itemId: result.item_id,
+      maxInstant: result.max_instant
+    };
   }
 }

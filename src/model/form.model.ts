@@ -1,4 +1,4 @@
-import { ScanModeDTO } from './scan-mode.model';
+import { ScanMode } from './scan-mode.model';
 
 export const FORM_COMPONENT_TYPES = [
   'OibText',
@@ -119,7 +119,7 @@ export interface OibCheckboxFormControl extends BaseOibFormControl<boolean> {
   type: 'OibCheckbox';
 }
 
-export interface OibScanModeFormControl extends BaseOibFormControl<ScanModeDTO> {
+export interface OibScanModeFormControl extends BaseOibFormControl<ScanMode> {
   type: 'OibScanMode';
   acceptSubscription: boolean;
   subscriptionOnly: boolean;
@@ -133,7 +133,7 @@ export interface OibTimezoneFormControl extends BaseOibFormControl<string> {
   type: 'OibTimezone';
 }
 
-export interface OibArrayFormControl extends BaseOibFormControl<Array<any>> {
+export interface OibArrayFormControl extends BaseOibFormControl<Array<OibFormControl>> {
   type: 'OibArray';
   content: Array<OibFormControl>;
 }

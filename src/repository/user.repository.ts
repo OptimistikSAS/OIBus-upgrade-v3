@@ -2,10 +2,11 @@ import argon2 from 'argon2';
 import { Database } from 'better-sqlite3';
 
 import { generateRandomId } from '../service/utils';
-import { User, UserCommandDTO, UserLight, UserSearchParam } from '../model/user.model';
 import { Page } from '../model/types';
+import { User } from '../model/user.model';
+import { UserSearchParam } from '../model/user.model';
 
-export const USERS_TABLE = 'users';
+const USERS_TABLE = 'users';
 const PAGE_SIZE = 50;
 
 /**
@@ -14,95 +15,44 @@ const PAGE_SIZE = 50;
 export default class UserRepository {
   constructor(private readonly database: Database) {}
 
-  /**
-   * Retrieve users based on search params
-   */
-  searchUsers(searchParams: UserSearchParam): Page<UserLight> {
+  search(searchParams: UserSearchParam): Page<User> {
     const queryParams = [];
     let whereClause = '';
+    const page = searchParams.page ?? 0;
 
     if (searchParams.login) {
-      whereClause += `WHERE login like '%${searchParams.login}%'`;
+      whereClause += `WHERE login like '%' || ? || '%'`;
       queryParams.push(searchParams.login);
     }
     const query =
-      `SELECT id, login, first_name as firstName, last_name as lastName FROM ${USERS_TABLE} ${whereClause}` +
-      ` LIMIT ${PAGE_SIZE} OFFSET ${PAGE_SIZE * searchParams.page};`;
+      `SELECT id, login, first_name, last_name, email, language, timezone FROM ${USERS_TABLE} ${whereClause}` +
+      ` LIMIT ${PAGE_SIZE} OFFSET ${PAGE_SIZE * page};`;
     const results = this.database
       .prepare(query)
       .all(...queryParams)
-      .map((result: any) => ({
-        id: result.id,
-        login: result.login,
-        friendlyName: `${result.firstName} ${result.lastName}`
-      }));
-    const totalElements = (this.database.prepare(`SELECT COUNT(*) as count FROM ${USERS_TABLE} ${whereClause}`).get() as { count: number })
-      .count;
+      .map(result => this.toUser(result as Record<string, string>));
+    const totalElements = (
+      this.database.prepare(`SELECT COUNT(*) as count FROM ${USERS_TABLE} ${whereClause}`).get(...queryParams) as { count: number }
+    ).count;
     const totalPages = Math.ceil(totalElements / PAGE_SIZE);
 
     return {
       content: results,
       size: PAGE_SIZE,
-      number: searchParams.page,
+      number: page,
       totalElements,
       totalPages
     };
   }
 
-  /**
-   * Retrieve a user by its id
-   */
-  getUserById(id: string): User | null {
-    const query = `SELECT id, login, first_name as firstName, last_name as lastName, email, language, timezone FROM ${USERS_TABLE} WHERE id = ?;`;
-    const result: User | null = this.database.prepare(query).get(id) as User | null;
+  findByLogin(login: string): User | null {
+    const query = `SELECT id, login, first_name, last_name, email, language, timezone FROM ${USERS_TABLE} WHERE login = ?;`;
+    const result = this.database.prepare(query).get(login);
     if (!result) return null;
-    return {
-      id: result.id,
-      login: result.login,
-      firstName: result.firstName,
-      lastName: result.lastName,
-      email: result.email,
-      language: result.language,
-      timezone: result.timezone,
-      friendlyName: `${result.firstName} ${result.lastName}`
-    };
+    return this.toUser(result as Record<string, string>);
   }
 
-  /**
-   * Retrieve a user by its login
-   */
-  getUserByLogin(login: string): User | null {
-    const query = `SELECT id, login, first_name as firstName, last_name as lastName, email, language, timezone FROM ${USERS_TABLE} WHERE login = ?;`;
-    const result: User | null = this.database.prepare(query).get(login) as User | null;
-    if (!result) return null;
-    return {
-      id: result.id,
-      login: result.login,
-      firstName: result.firstName,
-      lastName: result.lastName,
-      email: result.email,
-      language: result.language,
-      timezone: result.timezone,
-      friendlyName: `${result.firstName} ${result.lastName}`
-    };
-  }
-
-  /**
-   * Retrieve a user by the login to authenticate the user in middleware
-   */
-  getHashedPasswordByLogin(login: string): string | null {
-    const query = `SELECT password FROM ${USERS_TABLE} WHERE login = ?;`;
-    const result: { password: string } | null = this.database.prepare(query).get(login) as { password: string } | null;
-    if (!result) {
-      return null;
-    }
-    return result.password;
-  }
-
-  /**
-   * Create a User with a random generated ID
-   */
-  async createUser(command: UserCommandDTO, password: string): Promise<User> {
+  async create(command: Omit<User, 'id'>, password: string): Promise<User> {
     const id = generateRandomId(6);
     const insertQuery =
       `INSERT INTO ${USERS_TABLE} (id, login, password, first_name, last_name, email, language, timezone) ` +
@@ -113,18 +63,8 @@ export default class UserRepository {
       .prepare(insertQuery)
       .run(id, command.login, hash, command.firstName, command.lastName, command.email, command.language, command.timezone);
 
-    const query = `SELECT id, login, first_name as firstName, last_name as lastName, email, language, timezone FROM ${USERS_TABLE} WHERE ROWID = ?;`;
-    const result: any = this.database.prepare(query).get(insertResult.lastInsertRowid);
-    return {
-      id: result.id,
-      login: result.login,
-      firstName: result.firstName,
-      lastName: result.lastName,
-      email: result.email,
-      language: result.language,
-      timezone: result.timezone,
-      friendlyName: `${result.firstName} ${result.lastName}`
-    };
+    const query = `SELECT id, login, first_name, last_name, email, language, timezone FROM ${USERS_TABLE} WHERE ROWID = ?;`;
+    return this.toUser(this.database.prepare(query).get(insertResult.lastInsertRowid) as Record<string, string>);
   }
 
   async updatePassword(id: string, password: string): Promise<void> {
@@ -134,21 +74,27 @@ export default class UserRepository {
     this.database.prepare(queryUpdate).run(hash, id);
   }
 
-  /**
-   * Update a User by its ID
-   */
-  updateUser(id: string, command: UserCommandDTO): void {
+  update(id: string, command: Omit<User, 'id'>): void {
     const queryUpdate = `UPDATE ${USERS_TABLE} SET login = ?, first_name = ?, last_name = ?, email = ?, language = ?, timezone = ? WHERE id = ?;`;
     this.database
       .prepare(queryUpdate)
       .run(command.login, command.firstName, command.lastName, command.email, command.language, command.timezone, id);
   }
 
-  /**
-   * Delete a User by its ID
-   */
-  deleteUser(id: string): void {
+  delete(id: string): void {
     const query = `DELETE FROM ${USERS_TABLE} WHERE id = ?;`;
     this.database.prepare(query).run(id);
+  }
+
+  private toUser(result: Record<string, string>): User {
+    return {
+      id: result.id,
+      login: result.login,
+      firstName: result.first_name || null,
+      lastName: result.last_name || null,
+      email: result.email || null,
+      language: result.language,
+      timezone: result.timezone
+    };
   }
 }

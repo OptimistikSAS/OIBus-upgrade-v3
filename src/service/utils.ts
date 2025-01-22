@@ -15,21 +15,13 @@ const getCommandLineArguments = () => {
 };
 
 /**
- * Method to return a delayed promise.
- */
-const delay = async (timeout: number): Promise<void> =>
-  new Promise(resolve => {
-    setTimeout(resolve, timeout);
-  });
-
-/**
  * Create a folder if it does not exist
  */
 const createFolder = async (folder: string): Promise<void> => {
   const folderPath = path.resolve(folder);
   try {
     await fs.stat(folderPath);
-  } catch (error) {
+  } catch {
     await fs.mkdir(folderPath, { recursive: true });
   }
 };
@@ -90,4 +82,4 @@ const dirSize = async (dir: string): Promise<number> => {
   return (await Promise.all(paths)).flat(Infinity).reduce((i, size) => i + size, 0);
 };
 
-export { getCommandLineArguments, delay, createFolder, filesExists, dirSize };
+export { getCommandLineArguments, createFolder, filesExists, dirSize };

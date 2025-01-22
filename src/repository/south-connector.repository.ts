@@ -1,8 +1,11 @@
 import { generateRandomId } from '../service/utils';
-import { SouthConnectorCommandDTO, SouthConnectorDTO } from '../model/south-connector.model';
 import { Database } from 'better-sqlite3';
+import { SouthConnectorEntity, SouthConnectorItemEntity } from '../model/south-connector.model';
+import { SouthItemSettings, SouthSettings } from '../model/south-settings.model';
+import { OIBusSouthType } from '../model/engine.model';
 
-export const SOUTH_CONNECTORS_TABLE = 'south_connectors';
+const SOUTH_CONNECTORS_TABLE = 'south_connectors';
+const SOUTH_ITEMS_TABLE = 'south_items';
 
 /**
  * Repository used for South connectors (Data sources)
@@ -10,143 +13,72 @@ export const SOUTH_CONNECTORS_TABLE = 'south_connectors';
 export default class SouthConnectorRepository {
   constructor(private readonly database: Database) {}
 
-  /**
-   * Retrieve all South connectors
-   */
-  getSouthConnectors(): Array<SouthConnectorDTO> {
-    const query =
-      `SELECT id, name, type, description, enabled, history_max_instant_per_item AS maxInstantPerItem, ` +
-      `history_max_read_interval AS maxReadInterval, history_read_delay AS readDelay, history_read_overlap AS overlap, ` +
-      `settings FROM ${SOUTH_CONNECTORS_TABLE};`;
-    return this.database
-      .prepare(query)
-      .all()
-      .map((result: any) => ({
-        id: result.id,
-        name: result.name,
-        type: result.type,
-        description: result.description,
-        enabled: result.enabled,
-        history: {
-          maxInstantPerItem: result.maxInstantPerItem,
-          maxReadInterval: result.maxReadInterval,
-          readDelay: result.readDelay,
-          overlap: result.overlap
-        },
-        settings: JSON.parse(result.settings)
-      }));
-  }
+  findSouthById<S extends SouthSettings, I extends SouthItemSettings>(id: string): SouthConnectorEntity<S, I> | null {
+    const query = `
+        SELECT id, name, type, description, enabled, settings
+        FROM ${SOUTH_CONNECTORS_TABLE}
+        WHERE id = ?;`;
 
-  /**
-   * Retrieve a South connector by its ID
-   */
-  getSouthConnector(id: string): SouthConnectorDTO | null {
-    const query =
-      `SELECT id, name, type, description, enabled, history_max_instant_per_item AS maxInstantPerItem, ` +
-      `history_max_read_interval AS maxReadInterval, history_read_delay AS readDelay, history_read_overlap AS overlap, ` +
-      `settings FROM ${SOUTH_CONNECTORS_TABLE} WHERE id = ?;`;
-    const result: any = this.database.prepare(query).get(id);
-
+    const result = this.database.prepare(query).get(id);
     if (!result) {
       return null;
     }
-
-    return {
-      id: result.id,
-      name: result.name,
-      type: result.type,
-      description: result.description,
-      enabled: result.enabled,
-      history: {
-        maxInstantPerItem: result.maxInstantPerItem,
-        maxReadInterval: result.maxReadInterval,
-        readDelay: result.readDelay,
-        overlap: result.overlap
-      },
-      settings: JSON.parse(result.settings)
-    };
+    return this.toSouthConnector<S, I>(result as Record<string, string | number>);
   }
 
-  /**
-   * Create a South connector with a random generated ID
-   */
-  createSouthConnector(command: SouthConnectorCommandDTO, id = generateRandomId(6)): SouthConnectorDTO {
-    const insertQuery =
-      `INSERT INTO ${SOUTH_CONNECTORS_TABLE} (id, name, type, description, enabled, history_max_instant_per_item, ` +
-      `history_max_read_interval, history_read_delay, history_read_overlap, settings) ` +
-      `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
-    const insertResult = this.database
-      .prepare(insertQuery)
-      .run(
-        id,
-        command.name,
-        command.type,
-        command.description,
-        +command.enabled,
-        +command.history.maxInstantPerItem,
-        command.history.maxReadInterval,
-        command.history.readDelay,
-        command.history.overlap,
-        JSON.stringify(command.settings)
-      );
+  saveSouthConnector<S extends SouthSettings, I extends SouthItemSettings>(south: SouthConnectorEntity<S, I>): void {
+    const transaction = this.database.transaction(() => {
+      const insertQuery = `INSERT INTO ${SOUTH_CONNECTORS_TABLE} (id, name, type, description, enabled, settings) VALUES (?, ?, ?, ?, ?, ?);`;
+      this.database
+        .prepare(insertQuery)
+        .run(south.id, south.name, south.type, south.description, +south.enabled, JSON.stringify(south.settings));
 
-    const query =
-      `SELECT id, name, type, description, enabled, history_max_instant_per_item AS maxInstantPerItem, ` +
-      `history_max_read_interval AS maxReadInterval, history_read_delay AS readDelay, history_read_overlap AS overlap, ` +
-      `settings FROM ${SOUTH_CONNECTORS_TABLE} WHERE ROWID = ?;`;
-    const result: any = this.database.prepare(query).get(insertResult.lastInsertRowid);
-    return {
-      id: result.id,
-      name: result.name,
-      type: result.type,
-      description: result.description,
-      enabled: result.enabled,
-      history: {
-        maxInstantPerItem: result.maxInstantPerItem,
-        maxReadInterval: result.maxReadInterval,
-        readDelay: result.readDelay,
-        overlap: result.overlap
-      },
-      settings: JSON.parse(result.settings)
-    };
+      if (south.items.length > 0) {
+        const insert = this.database.prepare(
+          `INSERT INTO ${SOUTH_ITEMS_TABLE} (id, name, enabled, connector_id, scan_mode_id, settings) VALUES (?, ?, ?, ?, ?, ?);`
+        );
+        for (const item of south.items) {
+          insert.run(item.id, item.name, +item.enabled, south.id, item.scanModeId, JSON.stringify(item.settings));
+        }
+      }
+    });
+    transaction();
   }
 
-  startSouthConnector(id: string) {
+  start(id: string): void {
     const query = `UPDATE ${SOUTH_CONNECTORS_TABLE} SET enabled = ? WHERE id = ?;`;
     this.database.prepare(query).run(1, id);
   }
 
-  stopSouthConnector(id: string) {
-    const query = `UPDATE ${SOUTH_CONNECTORS_TABLE} SET enabled = ? WHERE id = ?;`;
-    this.database.prepare(query).run(0, id);
-  }
-
-  /**
-   * Update a South connector by its ID
-   */
-  updateSouthConnector(id: string, command: SouthConnectorCommandDTO): void {
-    const query =
-      `UPDATE ${SOUTH_CONNECTORS_TABLE} SET name = ?, description = ?, ` +
-      `history_max_instant_per_item = ?, history_max_read_interval = ?, history_read_delay = ?, history_read_overlap = ?, settings = ? WHERE id = ?;`;
-    this.database
+  findAllItemsForSouth<I extends SouthItemSettings>(southId: string): Array<SouthConnectorItemEntity<I>> {
+    const query = `SELECT id, name, enabled, scan_mode_id, settings FROM ${SOUTH_ITEMS_TABLE} WHERE connector_id = ?;`;
+    return this.database
       .prepare(query)
-      .run(
-        command.name,
-        command.description,
-        +command.history.maxInstantPerItem,
-        command.history.maxReadInterval,
-        command.history.readDelay,
-        command.history.overlap,
-        JSON.stringify(command.settings),
-        id
-      );
+      .all(southId)
+      .map(result => this.toSouthConnectorItemEntity<I>(result as Record<string, string>));
   }
 
-  /**
-   * Delete a South Connector by its ID
-   */
-  deleteSouthConnector(id: string): void {
-    const query = `DELETE FROM ${SOUTH_CONNECTORS_TABLE} WHERE id = ?;`;
-    this.database.prepare(query).run(id);
+  private toSouthConnectorItemEntity<I extends SouthItemSettings>(result: Record<string, string>): SouthConnectorItemEntity<I> {
+    return {
+      id: result.id,
+      name: result.name,
+      enabled: Boolean(result.enabled),
+      scanModeId: result.scan_mode_id,
+      settings: JSON.parse(result.settings) as I
+    };
+  }
+
+  private toSouthConnector<S extends SouthSettings, I extends SouthItemSettings>(
+    result: Record<string, string | number>
+  ): SouthConnectorEntity<S, I> {
+    return {
+      id: result.id as string,
+      name: result.name as string,
+      type: result.type as OIBusSouthType,
+      description: result.description as string,
+      enabled: Boolean(result.enabled),
+      settings: JSON.parse(result.settings as string) as S,
+      items: this.findAllItemsForSouth<I>(result.id as string)
+    };
   }
 }

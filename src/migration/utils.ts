@@ -1,5 +1,5 @@
-import { LogLevel } from '../model/engine.model';
-import { AuthenticationTypeV2, ItemV2, LogLevelV2, NorthTypeV2, NorthV2, ProxyV2, SouthTypeV2, SouthV2 } from '../model/config.model';
+import { LogLevel, OIBusNorthType, OIBusSouthType } from '../model/engine.model';
+import { ItemV2, LogLevelV2, NorthTypeV2, NorthV2, ProxyV2, SouthTypeV2, SouthV2 } from '../model/config.model';
 import ScanModeRepository from '../repository/scan-mode.repository';
 import EncryptionService from '../service/encryption.service';
 import pino from 'pino';
@@ -9,25 +9,24 @@ import {
   NorthConsoleSettings,
   NorthFileWriterSettings,
   NorthOIAnalyticsSettings,
-  NorthOIBusSettings
+  NorthSettings
 } from '../model/north-settings.model';
 import {
   SouthADSItemSettings,
   SouthADSSettings,
   SouthFolderScannerSettings,
   SouthModbusItemSettings,
-  SouthModbusItemSettingsDataType,
-  SouthModbusItemSettingsModbusType,
   SouthModbusSettings,
   SouthMQTTItemSettings,
   SouthMQTTSettings,
+  SouthMQTTSettingsAuthentication,
   SouthMQTTSettingsQos,
   SouthMSSQLSettings,
   SouthMySQLSettings,
   SouthODBCSettings,
   SouthOIAnalyticsSettings,
-  SouthOPCHDAItemSettings,
-  SouthOPCHDASettings,
+  SouthOPCItemSettings,
+  SouthOPCSettings,
   SouthOPCUAItemSettings,
   SouthOPCUAItemSettingsHaModeAggregate,
   SouthOPCUAItemSettingsHaModeResampling,
@@ -35,6 +34,7 @@ import {
   SouthOPCUASettingsAuthentication,
   SouthOracleSettings,
   SouthPostgreSQLSettings,
+  SouthSettings,
   SouthSlimsSettings,
   SouthSQLiteSettings
 } from '../model/south-settings.model';
@@ -52,20 +52,6 @@ export const convertLogLevel = (logLevel: LogLevelV2): LogLevel => {
     case 'none':
     default:
       return 'silent';
-  }
-};
-
-export const convertAuthentication = (authType: AuthenticationTypeV2, key: string, encryptedSecret: string): any => {
-  switch (authType) {
-    case 'Basic':
-      return { type: 'basic', username: key, password: encryptedSecret };
-    case 'Bearer':
-      return { type: 'bearer', token: encryptedSecret };
-    case 'Api Key':
-      return { type: 'api-key', key: key, secret: encryptedSecret };
-    case 'None':
-    default:
-      return { type: 'none' };
   }
 };
 
@@ -113,7 +99,7 @@ export const migrateNorthSettings = async (
   encryptionService: EncryptionService,
   logger: pino.Logger,
   proxies: Array<ProxyV2>
-) => {
+): Promise<NorthSettings> => {
   logger.trace(`Migrating North settings ${JSON.stringify(connector.settings)}`);
 
   switch (connector.type) {
@@ -121,8 +107,6 @@ export const migrateNorthSettings = async (
       return migrateConsole(connector);
     case 'OIAnalytics':
       return await migrateOIAnalytics(connector, encryptionService, proxies);
-    case 'OIConnect':
-      return await migrateOIConnect(connector, encryptionService, proxies);
     case 'AmazonS3':
       return await migrateAmazonS3(connector, encryptionService, proxies);
     case 'AzureBlob':
@@ -134,7 +118,7 @@ export const migrateNorthSettings = async (
   }
 };
 
-export const convertNorthType = (type: NorthTypeV2): string => {
+export const convertNorthType = (type: NorthTypeV2): OIBusNorthType => {
   switch (type) {
     case 'AmazonS3':
       return 'aws-s3';
@@ -146,8 +130,6 @@ export const convertNorthType = (type: NorthTypeV2): string => {
       return 'file-writer';
     case 'OIAnalytics':
       return 'oianalytics';
-    case 'OIConnect':
-      return 'oibus';
     default:
       throw new Error(`North connector type ${type} unknown in V3`);
   }
@@ -175,7 +157,9 @@ const migrateOIAnalytics = async (
       host: connector.settings.host,
       authentication: 'basic',
       accessKey: connector.settings.authentication.key,
-      secretKey: await encryptionService.convertCiphering(connector.settings.authentication.secret),
+      secretKey: connector.settings.authentication.secret
+        ? await encryptionService.convertCiphering(connector.settings.authentication.secret)
+        : '',
       acceptUnauthorized: connector.settings.acceptUnauthorized,
       ...(await migrateProxy(proxyV2, encryptionService))
     }
@@ -203,30 +187,32 @@ const migrateAzureBlob = async (connector: NorthV2, encryptionService: Encryptio
     account: connector.settings.account,
     container: connector.settings.container,
     path: connector.settings.path,
-    authentication: connector.settings.authentication,
+    authentication: toNewAzureBlobAuthentication(connector.settings.authentication),
     sasToken: connector.settings.sasToken ? await encryptionService.convertCiphering(connector.settings.sasToken) : null,
     accessKey: connector.settings.accessKey ? await encryptionService.convertCiphering(connector.settings.accessKey) : null,
     tenantId: connector.settings.tenantId,
     clientId: connector.settings.clientId,
-    clientSecret: connector.settings.clientSecret ? await encryptionService.convertCiphering(connector.settings.clientSecret) : null
+    clientSecret: connector.settings.clientSecret ? await encryptionService.convertCiphering(connector.settings.clientSecret) : null,
+    useADLS: false,
+    useCustomUrl: false,
+    useProxy: false
   };
 };
 
-const migrateOIConnect = async (
-  connector: NorthV2,
-  encryptionService: EncryptionService,
-  proxies: Array<ProxyV2>
-): Promise<NorthOIBusSettings> => {
-  const proxyV2 = connector.settings.proxy ? proxies.find(proxy => proxy.name === connector.settings.proxy) : undefined;
-  return {
-    host: connector.settings.host,
-    username: connector.settings.authentication.key,
-    password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-    acceptUnauthorized: connector.settings.acceptUnauthorized,
-    timeout: 30,
-    ...(await migrateProxy(proxyV2, encryptionService))
-  };
-};
+function toNewAzureBlobAuthentication(authentication: string): 'access-key' | 'sas-token' | 'aad' | 'external' {
+  switch (authentication) {
+    case 'external':
+      return 'external';
+    case 'aad':
+      return 'aad';
+    case 'accessKey':
+      return 'access-key';
+    case 'sasToken':
+      return 'sas-token';
+    default:
+      return 'access-key';
+  }
+}
 
 const migrateConsole = (connector: NorthV2): NorthConsoleSettings => {
   return {
@@ -234,7 +220,11 @@ const migrateConsole = (connector: NorthV2): NorthConsoleSettings => {
   };
 };
 
-export const migrateSouthSettings = async (connector: SouthV2, encryptionService: EncryptionService, logger: pino.Logger) => {
+export const migrateSouthSettings = async (
+  connector: SouthV2,
+  encryptionService: EncryptionService,
+  logger: pino.Logger
+): Promise<SouthSettings> => {
   logger.trace(`Migrating South settings ${JSON.stringify(connector.settings)}`);
 
   switch (connector.type) {
@@ -263,7 +253,7 @@ export const migrateSouthSettings = async (connector: SouthV2, encryptionService
   }
 };
 
-export const convertSouthType = (type: SouthTypeV2, settings: any): string => {
+export const convertSouthType = (type: SouthTypeV2, settings: { payloadParser: string; driver: string }): OIBusSouthType => {
   switch (type) {
     case 'ADS':
       return 'ads';
@@ -274,7 +264,7 @@ export const convertSouthType = (type: SouthTypeV2, settings: any): string => {
     case 'MQTT':
       return 'mqtt';
     case 'OPCHDA':
-      return 'opc-hda';
+      return 'opc';
     case 'OPCUA_DA':
       return 'opcua';
     case 'OPCUA_HA':
@@ -322,11 +312,20 @@ const migrateAds = (connector: SouthV2): SouthADSSettings => {
     clientAdsPort: connector.settings.clientAdsPort,
     retryInterval: connector.settings.retryInterval,
     plcName: connector.settings.plcName,
-    enumAsText: connector.settings.enumAsText,
-    boolAsText: connector.settings.boolAsText,
+    enumAsText: toNewADSAsText(connector.settings.enumAsText),
+    boolAsText: toNewADSAsText(connector.settings.boolAsText),
     structureFiltering: connector.settings.structureFiltering ?? []
   };
 };
+
+function toNewADSAsText(value: 'Text' | 'Integer'): 'text' | 'integer' {
+  switch (value) {
+    case 'Text':
+      return 'text';
+    case 'Integer':
+      return 'integer';
+  }
+}
 
 const migrateFolderScanner = (connector: SouthV2): SouthFolderScannerSettings => {
   return {
@@ -341,12 +340,30 @@ const migrateModbus = (connector: SouthV2): SouthModbusSettings => {
     port: connector.settings.port,
     slaveId: connector.settings.slaveId,
     retryInterval: connector.settings.retryInterval,
-    addressOffset: connector.settings.addressOffset,
-    endianness: connector.settings.endianness,
+    addressOffset: toNewModbusAddressOffset(connector.settings.addressOffset),
+    endianness: toNewModbusEndianness(connector.settings.endianness),
     swapBytesInWords: connector.settings.swapBytesInWords,
     swapWordsInDWords: connector.settings.swapWordsInDWords
   };
 };
+
+function toNewModbusEndianness(endianness: 'Big Endian' | 'Little Endian'): 'big-endian' | 'little-endian' {
+  switch (endianness) {
+    case 'Big Endian':
+      return 'big-endian';
+    case 'Little Endian':
+      return 'little-endian';
+  }
+}
+
+function toNewModbusAddressOffset(addressOffset: 'Modbus' | 'JBus'): 'modbus' | 'jbus' {
+  switch (addressOffset) {
+    case 'Modbus':
+      return 'modbus';
+    case 'JBus':
+      return 'jbus';
+  }
+}
 
 const migrateSouthMQTT = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthMQTTSettings> => {
   return {
@@ -360,18 +377,36 @@ const migrateSouthMQTT = async (connector: SouthV2, encryptionService: Encryptio
   };
 };
 
-const migrateMQTTAuth = async (settings: any, encryptionService: EncryptionService): Promise<any> => {
+const migrateMQTTAuth = async (
+  settings: { keyFile: string; certFile: string; caFile: string; username: string; password: string },
+  encryptionService: EncryptionService
+): Promise<SouthMQTTSettingsAuthentication> => {
   if (settings.certFile && settings.keyFile) {
-    return { type: 'cert', certFilePath: settings.certFile, keyFilePath: settings.keyFile, caFilePath: settings.caFile };
+    return {
+      type: 'cert',
+      certFilePath: settings.certFile,
+      keyFilePath: settings.keyFile,
+      caFilePath: settings.caFile
+    };
   }
   if (settings.username && settings.password) {
-    return { type: 'basic', username: settings.username, password: await encryptionService.convertCiphering(settings.password) };
+    return {
+      type: 'basic',
+      username: settings.username,
+      password: await encryptionService.convertCiphering(settings.password)
+    };
   }
   return { type: 'none' };
 };
 
-const migrateOPCHDA = (connector: SouthV2): SouthOPCHDASettings => {
+const migrateOPCHDA = (connector: SouthV2): SouthOPCSettings => {
   return {
+    throttling: {
+      maxInstantPerItem: false,
+      maxReadInterval: connector.settings.maxReadInterval ?? 60,
+      readDelay: connector.settings.readIntervalDelay || 200,
+      overlap: connector.settings.overlap || 0
+    },
     agentUrl: 'http://ip-adress-or-host:2224',
     retryInterval: connector.settings.retryInterval,
     host: connector.settings.host,
@@ -381,32 +416,117 @@ const migrateOPCHDA = (connector: SouthV2): SouthOPCHDASettings => {
 
 const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
+    throttling: {
+      maxInstantPerItem: false,
+      maxReadInterval: connector.settings.maxReadInterval ?? 60,
+      readDelay: connector.settings.readIntervalDelay || 200,
+      overlap: connector.settings.overlap || 0
+    },
+    sharedConnection: false,
+    readTimeout: connector.settings.readTimeout || 15_000,
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
-    securityMode: connector.settings.securityMode,
-    securityPolicy: connector.settings.securityPolicy,
+    securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
+    securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
   };
 };
 
 const migrateOPCUAHA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
+    throttling: {
+      maxInstantPerItem: false,
+      maxReadInterval: connector.settings.maxReadInterval ?? 60,
+      readDelay: connector.settings.readIntervalDelay || 200,
+      overlap: connector.settings.overlap || 0
+    },
+    sharedConnection: false,
+    readTimeout: connector.settings.readTimeout || 15_000,
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
-    securityMode: connector.settings.securityMode,
-    securityPolicy: connector.settings.securityPolicy,
+    securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
+    securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
   };
 };
 
-const migrateOPCUAAuth = async (settings: any, encryptionService: EncryptionService): Promise<SouthOPCUASettingsAuthentication> => {
+function toNewOPCUASecurityMode(securityMode: 'None' | 'Sign' | 'SignAndEncrypt'): 'none' | 'sign' | 'sign-and-encrypt' {
+  switch (securityMode) {
+    case 'None':
+      return 'none';
+    case 'Sign':
+      return 'sign';
+    case 'SignAndEncrypt':
+      return 'sign-and-encrypt';
+  }
+}
+
+function toNewOPCUASecurityPolicy(
+  securityPolicy:
+    | 'None'
+    | 'Basic128'
+    | 'Basic192'
+    | 'Basic256'
+    | 'Basic128Rsa15'
+    | 'Basic192Rsa15'
+    | 'Basic256Rsa15'
+    | 'Basic256Sha256'
+    | 'Aes128_Sha256_RsaOaep'
+    | 'PubSub_Aes128_CTR'
+    | 'PubSub_Aes256_CTR'
+):
+  | 'none'
+  | 'basic128'
+  | 'basic192'
+  | 'basic192-rsa15'
+  | 'basic256-rsa15'
+  | 'basic256-sha256'
+  | 'aes128-sha256-rsa-oaep'
+  | 'pub-sub-aes-128-ctr'
+  | 'pub-sub-aes-256-ctr' {
+  switch (securityPolicy) {
+    case 'None':
+      return 'none';
+    case 'Basic128':
+      return 'basic128';
+    case 'Basic192':
+      return 'basic192';
+    case 'Basic256': // obsolete
+      return 'basic128';
+    case 'Basic128Rsa15': // obsolete
+      return 'basic128';
+    case 'Basic192Rsa15':
+      return 'basic192-rsa15';
+    case 'Basic256Rsa15':
+      return 'basic256-rsa15';
+    case 'Basic256Sha256':
+      return 'basic256-sha256';
+    case 'Aes128_Sha256_RsaOaep':
+      return 'aes128-sha256-rsa-oaep';
+    case 'PubSub_Aes128_CTR':
+      return 'pub-sub-aes-128-ctr';
+    case 'PubSub_Aes256_CTR':
+      return 'pub-sub-aes-256-ctr';
+    default:
+      return 'none';
+  }
+}
+
+const migrateOPCUAAuth = async (
+  settings: { keyFile: string; cert: string; username: string; password: string },
+  encryptionService: EncryptionService
+): Promise<SouthOPCUASettingsAuthentication> => {
   if (settings.keyFile && settings.cert) {
     return { type: 'cert', certFilePath: settings.cert, keyFilePath: settings.keyFile };
   }
   if (settings.username && settings.password) {
-    return { type: 'basic', username: settings.username, password: await encryptionService.convertCiphering(settings.password) };
+    return {
+      type: 'basic',
+      username: settings.username,
+      password: await encryptionService.convertCiphering(settings.password)
+    };
   }
   return { type: 'none' };
 };
@@ -415,17 +535,16 @@ const migrateSQL = async (
   connector: SouthV2,
   encryptionService: EncryptionService
 ): Promise<
-  | SouthMSSQLSettings
-  | SouthMySQLSettings
-  | SouthPostgreSQLSettings
-  | SouthOracleSettings
-  | SouthSQLiteSettings
-  | SouthODBCSettings
-  | Record<string, never>
+  SouthMSSQLSettings | SouthMySQLSettings | SouthPostgreSQLSettings | SouthOracleSettings | SouthSQLiteSettings | SouthODBCSettings
 > => {
   switch (connector.settings.driver) {
     case 'mssql':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -439,6 +558,11 @@ const migrateSQL = async (
       };
     case 'mysql':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -448,6 +572,11 @@ const migrateSQL = async (
       };
     case 'postgresql':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -458,6 +587,11 @@ const migrateSQL = async (
       };
     case 'oracle':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -467,10 +601,20 @@ const migrateSQL = async (
       };
     case 'sqlite':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         databasePath: connector.settings.databasePath
       };
     case 'odbc':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         remoteAgent: false,
         connectionString: `Driver=${connector.settings.odbcDriverPath};SERVER=${connector.settings.host},${
           connector.settings.port
@@ -489,6 +633,11 @@ const migrateSQL = async (
 
 const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettings> => {
   return {
+    throttling: {
+      maxReadInterval: connector.settings.maxReadInterval ?? 60,
+      readDelay: connector.settings.readIntervalDelay || 200,
+      overlap: connector.settings.overlap || 0
+    },
     remoteAgent: true,
     agentUrl: connector.settings.agentUrl,
     connectionString: connector.settings.connectionString,
@@ -502,10 +651,15 @@ const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettin
 const migrateRestApi = async (
   connector: SouthV2,
   encryptionService: EncryptionService
-): Promise<SouthOIAnalyticsSettings | SouthSlimsSettings | Record<string, never>> => {
+): Promise<SouthOIAnalyticsSettings | SouthSlimsSettings> => {
   switch (connector.settings.payloadParser) {
     case 'OIAnalytics time values':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         useOiaModule: false,
         timeout: 30,
         specificSettings: {
@@ -519,6 +673,11 @@ const migrateRestApi = async (
       };
     case 'SLIMS':
       return {
+        throttling: {
+          maxReadInterval: connector.settings.maxReadInterval ?? 60,
+          readDelay: connector.settings.readIntervalDelay || 200,
+          overlap: connector.settings.overlap || 0
+        },
         url: `${connector.settings.protocol}://${connector.settings.host}`,
         port: connector.settings.port,
         username: connector.settings.authentication.key,
@@ -582,15 +741,15 @@ const migrateSouthMQTTItem = (connector: SouthV2, item: ItemV2): SouthMQTTItemSe
 const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {
   return {
     nodeId: item.nodeId,
-    mode: 'DA'
+    mode: 'da'
   };
 };
 
 const migrateOPCUAHAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {
-  const scanGroup = connector.settings.scanGroups.find((group: any) => group.scanMode === item.scanMode);
+  const scanGroup = connector.settings.scanGroups.find((group: { scanMode: string }) => group.scanMode === item.scanMode);
   return {
     nodeId: item.nodeId,
-    mode: 'HA',
+    mode: 'ha',
     haMode: {
       aggregate: convertOPCUAAggregate(scanGroup?.aggregate),
       resampling: convertOPCUAResampling(scanGroup?.resampling)
@@ -617,28 +776,27 @@ const convertOPCUAAggregate = (aggregate: string | undefined): SouthOPCUAItemSet
 const convertOPCUAResampling = (aggregate: string | undefined): SouthOPCUAItemSettingsHaModeResampling => {
   switch (aggregate) {
     case 'Second':
-      return 'second';
+      return '1s';
     case '10 Seconds':
-      return '10Seconds';
+      return '10s';
     case '30 Seconds':
-      return '30Seconds';
+      return '30s';
     case 'Minute':
-      return 'minute';
+      return '1min';
     case 'Hour':
-      return 'hour';
+      return '1h';
     case 'Day':
-      return 'day';
+      return '1d';
     case 'None':
     default:
       return 'none';
   }
 };
 
-const migrateOPCHDAItem = (connector: SouthV2, item: ItemV2): SouthOPCHDAItemSettings => {
-  const scanGroup = connector.settings.scanGroups.find((group: any) => group.scanMode === item.scanMode);
+const migrateOPCHDAItem = (connector: SouthV2, item: ItemV2): SouthOPCItemSettings => {
   return {
-    aggregate: scanGroup?.aggregate || 'raw',
-    resampling: scanGroup?.resampling || 'none',
+    aggregate: 'raw',
+    resampling: 'none',
     nodeId: item.nodeId
   };
 };
@@ -646,11 +804,55 @@ const migrateOPCHDAItem = (connector: SouthV2, item: ItemV2): SouthOPCHDAItemSet
 const migrateModbusItem = (connector: SouthV2, item: ItemV2): SouthModbusItemSettings => {
   return {
     address: item.address,
-    modbusType: item.modbusType as SouthModbusItemSettingsModbusType,
-    dataType: item.dataType as SouthModbusItemSettingsDataType,
-    multiplierCoefficient: parseInt(item.multiplierCoefficient)
+    modbusType: toNewModbusRegisterType(item.modbusType),
+    data: {
+      dataType: toNewModbusDataType(item.dataType),
+      multiplierCoefficient: parseInt(item.multiplierCoefficient)
+    }
   };
 };
+
+function toNewModbusDataType(
+  modbusType: string
+): 'uint16' | 'int16' | 'uint32' | 'int32' | 'big-uint64' | 'big-int64' | 'float' | 'double' | 'bit' {
+  switch (modbusType) {
+    case 'UInt16':
+      return 'uint16';
+    case 'Int16':
+      return 'int16';
+    case 'UInt32':
+      return 'uint32';
+    case 'Int32':
+      return 'uint32';
+    case 'BigUInt64':
+      return 'big-uint64';
+    case 'BigInt64':
+      return 'big-int64';
+    case 'Float':
+      return 'float';
+    case 'Double':
+      return 'double';
+    case 'Bit':
+      return 'bit';
+    default:
+      return 'uint16';
+  }
+}
+
+function toNewModbusRegisterType(dataType: string): 'coil' | 'discrete-input' | 'input-register' | 'holding-register' {
+  switch (dataType) {
+    case 'coil':
+      return 'coil';
+    case 'discreteInput':
+      return 'discrete-input';
+    case 'inputRegister':
+      return 'input-register';
+    case 'holdingRegister':
+      return 'holding-register';
+    default:
+      return 'holding-register';
+  }
+}
 
 const migrateProxy = async (proxy: ProxyV2 | undefined, encryptionService: EncryptionService) => {
   if (!proxy) {

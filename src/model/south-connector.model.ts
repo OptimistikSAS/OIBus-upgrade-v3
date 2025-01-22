@@ -1,109 +1,28 @@
-import { OibFormControl } from './form.model';
+import { SouthItemSettings, SouthSettings } from './south-settings.model';
 import { BaseEntity, Instant } from './types';
-import { SouthSettings, SouthItemSettings } from './south-settings.model';
+import { OIBusSouthType } from './engine.model';
 
-export interface SouthType {
-  id: string;
-  category: string;
+export interface SouthConnectorEntityLight extends BaseEntity {
   name: string;
+  type: OIBusSouthType;
   description: string;
-  modes: {
-    subscription: boolean;
-    lastPoint: boolean;
-    lastFile: boolean;
-    history: boolean;
-  };
+  enabled: boolean;
 }
 
-export interface SouthConnectorHistorySettings {
-  maxInstantPerItem: boolean;
-  maxReadInterval: number;
-  readDelay: number;
-  overlap: number;
-}
-
-/**
- * DTO for South connectors
- */
-export interface SouthConnectorDTO<T extends SouthSettings = any> extends BaseEntity {
+export interface SouthConnectorEntity<T extends SouthSettings, I extends SouthItemSettings> extends BaseEntity {
   name: string;
-  type: string;
+  type: OIBusSouthType;
   description: string;
   enabled: boolean;
   settings: T;
-  history: SouthConnectorHistorySettings;
+  items: Array<SouthConnectorItemEntity<I>>;
 }
 
-/**
- * Command DTO for South connector
- */
-export interface SouthConnectorCommandDTO<T = any> {
-  name: string;
-  type: string;
-  description: string;
-  enabled: boolean;
-  history: SouthConnectorHistorySettings;
-  settings: T;
-}
-
-/**
- * Command DTO for South connector
- */
-export interface SouthConnectorWithItemsCommandDTO<> {
-  south: SouthConnectorDTO;
-  items: Array<SouthConnectorItemDTO>;
-  itemIdsToDelete: Array<string>;
-}
-
-/**
- * DTO used for an item to query within a south
- */
-export interface SouthConnectorItemDTO<T extends SouthItemSettings = any> extends BaseEntity {
+export interface SouthConnectorItemEntity<T extends SouthItemSettings> extends BaseEntity {
   name: string;
   enabled: boolean;
-  connectorId: string;
-  settings: T;
   scanModeId: string;
-}
-
-/**
- * Command DTO used to create an SouthConnectorItem
- */
-export interface SouthConnectorItemCommandDTO<T extends SouthItemSettings = any> {
-  id?: string;
-  enabled: boolean;
-  name: string;
   settings: T;
-  scanModeId: string;
-}
-
-export interface SouthConnectorItemSearchParam {
-  name: string | null;
-  page: number;
-}
-
-export interface SouthConnectorItemManifest {
-  scanMode: {
-    acceptSubscription: boolean;
-    subscriptionOnly: boolean;
-  };
-  settings: Array<OibFormControl>;
-}
-
-export interface SouthConnectorManifest {
-  id: string;
-  category: string;
-  name: string;
-  description: string;
-  modes: {
-    subscription: boolean;
-    lastPoint: boolean;
-    lastFile: boolean;
-    history: boolean;
-    forceMaxInstantPerItem: boolean;
-  };
-  settings: Array<OibFormControl>;
-  items: SouthConnectorItemManifest;
 }
 
 export interface SouthCache {

@@ -10,8 +10,6 @@ const LOG_FILE_NAME = 'upgrade-journal.log';
 class LoggerService {
   logger: pino.Logger | null = null;
 
-  constructor() {}
-
   /**
    * Run the appropriate pino log transports according to the configuration
    */

@@ -42,7 +42,7 @@
   ],
   "dependencies": {
     "argon2": "0.41.1",
-    "better-sqlite3": "11.7.2",
+    "better-sqlite3": "11.8.1",
     "cron": "3.3.2",
     "luxon": "3.5.0",
     "minimist": "1.2.8",

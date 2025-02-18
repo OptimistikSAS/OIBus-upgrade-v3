@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.4.0...v0.4.1) (2025-02-18)
+
+
+### Bug Fixes
+
+* update sqlite ([d1e64a1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/d1e64a1509aac06c26300f2f8b7597b72de86a47))
+
 ## [0.4.0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.3.3...v0.4.0) (2025-01-22)
 
 

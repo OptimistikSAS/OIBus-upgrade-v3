@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.2](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.4.1...v0.4.2) (2025-02-18)
+
+
+### Bug Fixes
+
+* update node ([419d1c7](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/419d1c79195a506adcae6dbb144b37b8467475e9))
+
 ## [0.4.1](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.4.0...v0.4.1) (2025-02-18)
 
 

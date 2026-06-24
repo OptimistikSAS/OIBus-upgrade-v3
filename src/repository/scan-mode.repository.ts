@@ -10,6 +10,11 @@ const SCAN_MODES_TABLE = 'scan_modes';
 export default class ScanModeRepository {
   constructor(private readonly database: Database) {}
 
+  getAll(): Array<ScanMode> {
+    const query = `SELECT id, name, description, cron FROM ${SCAN_MODES_TABLE};`;
+    return (this.database.prepare(query).all() as Array<Record<string, string>>).map(r => this.toScanMode(r));
+  }
+
   getByName(name: string): ScanMode | null {
     const query = `SELECT id, name, description, cron FROM ${SCAN_MODES_TABLE} WHERE name = ?;`;
     const result = this.database.prepare(query).get(name);

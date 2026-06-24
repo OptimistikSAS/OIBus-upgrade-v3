@@ -6,6 +6,7 @@ import { convertSouthType, migrateDelimiter, migrateItemSettings, migrateSouthSe
 import { SouthConnectorEntity, SouthConnectorItemEntity } from '../model/south-connector.model';
 import { SouthItemSettings, SouthSettings } from '../model/south-settings.model';
 import { generateRandomId } from '../service/utils';
+import { ScanMode } from '../model/scan-mode.model';
 
 export default class SouthMigration {
   constructor(
@@ -14,8 +15,13 @@ export default class SouthMigration {
     private readonly encryptionService: EncryptionService
   ) {}
 
-  async migrate(connectors: Array<SouthV2> = []): Promise<void> {
+  private resolveScanMode(v2Name: string, scanModeMapping: Map<string, ScanMode>): ScanMode | null {
+    return scanModeMapping.get(v2Name) ?? this.repositoryService.scanModeRepository.getByName(v2Name) ?? null;
+  }
+
+  async migrate(connectors: Array<SouthV2> = [], scanModeMapping = new Map<string, ScanMode>()): Promise<Map<string, string>> {
     this.logger.info(`Migrating ${connectors.length} South connectors`);
+    const idMapping = new Map<string, string>();
     for (const connector of connectors) {
       this.logger.debug(`Migrating South "${connector.name}" of type ${connector.type}`);
 
@@ -35,19 +41,19 @@ export default class SouthMigration {
             case 'OPCUA_HA':
             case 'OPCUA_DA':
             case 'OPCHDA':
-              items = await this.migratePoints(connector);
+              items = await this.migratePoints(connector, scanModeMapping);
               break;
             case 'FolderScanner':
-              items = await this.createFolderScannerItem(connector);
+              items = await this.createFolderScannerItem(connector, scanModeMapping);
               break;
             case 'SQL':
-              items = await this.createSQLItem(connector);
+              items = await this.createSQLItem(connector, scanModeMapping);
               break;
             case 'OdbcRemote':
-              items = await this.createODBCItem(connector);
+              items = await this.createODBCItem(connector, scanModeMapping);
               break;
             case 'RestApi':
-              items = await this.createRestApiItem(connector);
+              items = await this.createRestApiItem(connector, scanModeMapping);
               break;
             default:
               this.logger.error(`South type ${connector.type} not recognized`);
@@ -69,36 +75,54 @@ export default class SouthMigration {
           }
         }
 
+        const seenNames = new Set<string>();
+        const deduplicatedItems: typeof items = [];
+        for (const item of items) {
+          if (seenNames.has(item.name)) {
+            this.logger.warn(`Skipping duplicate item name "${item.name}" for South connector "${connector.name}"`);
+          } else {
+            seenNames.add(item.name);
+            deduplicatedItems.push(item);
+          }
+        }
+
+        const newId = generateRandomId();
+        idMapping.set(connector.id, newId);
+
         const command: SouthConnectorEntity<SouthSettings, SouthItemSettings> = {
-          id: connector.id,
+          id: newId,
           name: connector.name,
           description: '',
           type: convertSouthType(connector.type, connector.settings),
           enabled: connector.enabled,
           settings: await migrateSouthSettings(connector, this.encryptionService, this.logger),
-          items
+          items: deduplicatedItems
         };
         this.repositoryService.southConnectorRepository.saveSouthConnector(command);
       } catch (error) {
         this.logger.error(`Error when migrating South "${JSON.stringify(connector)}": ${error}`);
       }
     }
+    return idMapping;
   }
 
-  migratePoints = async (southConnector: SouthV2): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
+  migratePoints = async (
+    southConnector: SouthV2,
+    scanModeMapping: Map<string, ScanMode>
+  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
     const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
     const items = southConnector.points;
     this.logger.info(`Migrating ${items.length} items for South "${southConnector.name}" ($${southConnector.id})`);
     for (const item of items) {
       this.logger.trace(`Migrating South point "${item.pointId}"`);
       try {
-        const scanMode = this.repositoryService.scanModeRepository.getByName(item.scanMode);
+        const scanMode = this.resolveScanMode(item.scanMode, scanModeMapping);
         if (!scanMode && item.scanMode !== 'listen') {
           this.logger.error(`Could not find scanMode ${item.scanMode}`);
           continue;
         }
         newItems.push({
-          id: item.id,
+          id: item.id || generateRandomId(),
           name: item.pointId,
           enabled: true,
           scanModeId: scanMode?.id || 'subscription',
@@ -111,15 +135,18 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createFolderScannerItem = async (southConnector: SouthV2): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
+  createFolderScannerItem = async (
+    southConnector: SouthV2,
+    scanModeMapping: Map<string, ScanMode>
+  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
     const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
-    const scanMode = this.repositoryService.scanModeRepository.getByName(southConnector.scanMode);
+    const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return newItems;
     }
     newItems.push({
-      id: generateRandomId(6),
+      id: generateRandomId(),
       name: southConnector.name,
       enabled: true,
       scanModeId: scanMode.id,
@@ -136,9 +163,12 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createSQLItem = async (southConnector: SouthV2): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
+  createSQLItem = async (
+    southConnector: SouthV2,
+    scanModeMapping: Map<string, ScanMode>
+  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
     const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
-    const scanMode = this.repositoryService.scanModeRepository.getByName(southConnector.scanMode);
+    const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return newItems;
@@ -147,7 +177,7 @@ export default class SouthMigration {
     switch (southConnector.settings.driver) {
       case 'mssql':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
@@ -176,7 +206,7 @@ export default class SouthMigration {
         break;
       case 'mysql':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
@@ -206,7 +236,7 @@ export default class SouthMigration {
         break;
       case 'postgresql':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
@@ -235,7 +265,7 @@ export default class SouthMigration {
         break;
       case 'oracle':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
@@ -263,24 +293,65 @@ export default class SouthMigration {
           }
         });
         break;
-      case 'sqlite':
+      case 'sqlite': {
+        const isEvtDb = southConnector.settings.databasePath?.endsWith('evt.db');
+        const sqliteTimezone = isEvtDb ? 'Europe/Paris' : (southConnector.settings.timezone ?? 'UTC');
+        const sqliteDateTimeFields = isEvtDb
+          ? [
+              {
+                fieldName: 'timestamp',
+                useAsReference: true,
+                type: 'string' as const,
+                format: southConnector.settings.dateFormat,
+                timezone: sqliteTimezone,
+                locale: 'en-US'
+              },
+              {
+                fieldName: 'end_date',
+                useAsReference: false,
+                type: 'string' as const,
+                format: southConnector.settings.dateFormat,
+                timezone: sqliteTimezone,
+                locale: 'en-US'
+              }
+            ]
+          : [
+              {
+                fieldName: southConnector.settings.timeColumn,
+                useAsReference: true,
+                type: 'string' as const,
+                format: southConnector.settings.dateFormat,
+                timezone: sqliteTimezone,
+                locale: 'en-US'
+              }
+            ];
+        let sqliteQuery = southConnector.settings.query;
+        if (isEvtDb) {
+          const stationMatch = (southConnector.settings.query as string)?.match(/(\S+)\s+AS\s+Station/i);
+          const station = stationMatch ? stationMatch[1] : '1000';
+          sqliteQuery = `SELECT
+  ID AS id,
+  Numero,
+  Texte,
+  Groupe,
+  Status,
+  strftime('%Y-%m-%d %H:%M:%f', REPLACE(SUBSTR(TimeStamp, 1, 19), '/', '-') || '.' || SUBSTR(TimeStamp, 21, 3)) AS timestamp,
+  strftime('%Y-%m-%d %H:%M:%f', REPLACE(SUBSTR(TimeStamp, 1, 19), '/', '-') || '.' || SUBSTR(TimeStamp, 21, 3), '+1 second') AS end_date,
+  ${station} AS Station
+FROM TableEvt
+WHERE TimeStamp IS NOT NULL
+  AND strftime('%Y-%m-%d %H:%M:%f', REPLACE(SUBSTR(TimeStamp, 1, 19), '/', '-') || '.' || SUBSTR(TimeStamp, 21, 3)) > @StartTime
+  AND strftime('%Y-%m-%d %H:%M:%f', REPLACE(SUBSTR(TimeStamp, 1, 19), '/', '-') || '.' || SUBSTR(TimeStamp, 21, 3)) <= @EndTime;`;
+        }
+
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
           settings: {
-            query: southConnector.settings.query,
-            dateTimeFields: [
-              {
-                fieldName: southConnector.settings.timeColumn,
-                useAsReference: true,
-                type: 'string',
-                format: southConnector.settings.dateFormat,
-                timezone: southConnector.settings.timezone,
-                locale: 'en-US'
-              }
-            ],
+            query: sqliteQuery,
+            dateTimeFields: sqliteDateTimeFields,
             serialization: {
               type: 'csv',
               filename: southConnector.settings.filename,
@@ -292,9 +363,10 @@ export default class SouthMigration {
           }
         });
         break;
+      }
       case 'odbc':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,
@@ -327,16 +399,19 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createODBCItem = async (southConnector: SouthV2): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
+  createODBCItem = async (
+    southConnector: SouthV2,
+    scanModeMapping: Map<string, ScanMode>
+  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
     const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
-    const scanMode = this.repositoryService.scanModeRepository.getByName(southConnector.scanMode);
+    const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return newItems;
     }
 
     newItems.push({
-      id: generateRandomId(6),
+      id: generateRandomId(),
       name: southConnector.name,
       enabled: true,
       scanModeId: scanMode.id,
@@ -365,9 +440,12 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createRestApiItem = async (southConnector: SouthV2): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
+  createRestApiItem = async (
+    southConnector: SouthV2,
+    scanModeMapping: Map<string, ScanMode>
+  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
     const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
-    const scanMode = this.repositoryService.scanModeRepository.getByName(southConnector.scanMode);
+    const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
       return newItems;
@@ -376,7 +454,7 @@ export default class SouthMigration {
     switch (southConnector.settings.payloadParser) {
       case 'OIAnalytics time values':
         newItems.push({
-          id: generateRandomId(6),
+          id: generateRandomId(),
           name: southConnector.name,
           enabled: true,
           scanModeId: scanMode.id,

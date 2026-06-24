@@ -14,7 +14,7 @@ export default class SouthCacheMigration {
     private readonly logger: pino.Logger
   ) {}
 
-  async migrate(connectors: Array<SouthV2> = [], cacheFolder: string): Promise<void> {
+  async migrate(connectors: Array<SouthV2> = [], cacheFolder: string, idMapping: Map<string, string>): Promise<void> {
     this.logger.info(`Migrating cache for ${connectors.length} South connectors`);
     for (const connector of connectors) {
       this.logger.debug(`Migrating cache for South "${connector.name}" of type ${connector.type}`);
@@ -25,6 +25,7 @@ export default class SouthCacheMigration {
           continue;
         }
 
+        const newConnectorId = idMapping.get(connector.id) ?? connector.id;
         const cacheDatabase = Database(cacheFile);
 
         const cacheEntries: Array<{ name: string; value: Instant }> = cacheDatabase
@@ -36,8 +37,8 @@ export default class SouthCacheMigration {
           const associatedScanMode = entry.name.split('-', 2);
           const foundScanMode = this.repositoryService.scanModeRepository.getByName(associatedScanMode[1]);
           if (foundScanMode && maxInstant) {
-            const itemId = this.getAssociatedItemId(connector);
-            this.repositoryService.southCacheRepository.save(connector.id, itemId, maxInstant);
+            const itemId = this.getAssociatedItemId(newConnectorId);
+            this.repositoryService.southCacheRepository.save(newConnectorId, itemId, maxInstant);
           }
         }
 
@@ -49,15 +50,8 @@ export default class SouthCacheMigration {
     }
   }
 
-  getAssociatedItemId(connector: SouthV2): string {
-    switch (connector.type) {
-      case 'SQL':
-      case 'RestApi': {
-        const southItems = this.repositoryService.southConnectorRepository.findAllItemsForSouth(connector.id);
-        return southItems.length > 0 ? southItems[0].id : 'all';
-      }
-      default:
-        return 'all';
-    }
+  getAssociatedItemId(newConnectorId: string): string {
+    const southItems = this.repositoryService.southConnectorRepository.findAllItemsForSouth(newConnectorId);
+    return southItems.length > 0 ? southItems[0].id : 'all';
   }
 }

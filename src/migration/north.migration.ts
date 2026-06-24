@@ -6,6 +6,7 @@ import { NorthConnectorEntity } from '../model/north-connector.model';
 import { convertNorthType, intervalToCron, migrateNorthSettings } from './utils';
 import { NorthSettings } from '../model/north-settings.model';
 import { SouthConnectorEntityLight } from '../model/south-connector.model';
+import { generateRandomId } from '../service/utils';
 
 export default class NorthMigration {
   constructor(
@@ -14,14 +15,15 @@ export default class NorthMigration {
     private readonly encryptionService: EncryptionService
   ) {}
 
-  async migrate(connectors: Array<NorthV2> = [], proxies: Array<ProxyV2> = []): Promise<void> {
+  async migrate(connectors: Array<NorthV2> = [], proxies: Array<ProxyV2> = [], southIdMapping = new Map<string, string>()): Promise<void> {
     this.logger.info(`Migrating ${connectors.length} North connectors`);
     for (const connector of connectors) {
       this.logger.trace(`Migrating North "${connector.name}"`);
       try {
         const subscriptions: Array<SouthConnectorEntityLight> = [];
         for (const oldSubscription of connector.subscribedTo) {
-          const south = this.repositoryService.southConnectorRepository.findSouthById(oldSubscription);
+          const newSouthId = southIdMapping.get(oldSubscription) ?? oldSubscription;
+          const south = this.repositoryService.southConnectorRepository.findSouthById(newSouthId);
           if (south) {
             subscriptions.push({
               id: south.id,
@@ -33,7 +35,7 @@ export default class NorthMigration {
           }
         }
         const command: NorthConnectorEntity<NorthSettings> = {
-          id: connector.id,
+          id: generateRandomId(),
           name: connector.name,
           description: '',
           type: convertNorthType(connector.type),

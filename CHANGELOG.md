@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.5.0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.4.3...v0.5.0) (2026-06-24)
+
+
+### Features
+
+* add 3.8 migrations steps ([f9477dd](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/f9477dd3c45fe3a5b820a866c7a9edf2b5e7a7ba))
+
+
+### Bug Fixes
+
+* fix scan mode migration and ads model and auto fix some sql queries ([8a6d5a0](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/8a6d5a0885b5f32b0d8dd206a53fff78f092f229))
+* update packages and tests suite ([f430178](https://github.com/OptimistikSAS/OIBus-upgrade-v3/commit/f43017804ea74ca8980f5605841ae05727e4f099))
+
 ## [0.4.3](https://github.com/OptimistikSAS/OIBus-upgrade-v3/compare/v0.4.2...v0.4.3) (2025-02-18)
 
 

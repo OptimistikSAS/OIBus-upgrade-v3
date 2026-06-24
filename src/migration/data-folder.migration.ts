@@ -20,18 +20,18 @@ export default class DataFolderMigration {
   }
 
   async migrate() {
-    this.logger.info('\n[FolderStructureMigration]', 'Started migrating archive location');
+    this.logger.info('\n[FolderStructureMigration] Started migrating archive location');
 
     await createFolder(this.ARCHIVE_FOLDER_PATH);
-    this.logger.info('[FolderStructureMigration]', 'Created archive folder');
+    this.logger.info('[FolderStructureMigration] Created archive folder');
 
     await createFolder(this.ERROR_FOLDER_PATH);
-    this.logger.info('[FolderStructureMigration]', 'Created error folder');
+    this.logger.info('[FolderStructureMigration] Created error folder');
 
-    this.logger.info('[FolderStructureMigration]', 'Refactoring data stream');
+    this.logger.info('[FolderStructureMigration] Refactoring data stream');
     await this.refactorDataStream();
 
-    this.logger.info('[FolderStructureMigration]', 'Finished migrating archive location\n');
+    this.logger.info('[FolderStructureMigration] Finished migrating archive location\n');
   }
 
   async refactorDataStream() {

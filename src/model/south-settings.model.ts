@@ -440,6 +440,7 @@ export interface SouthModbusSettings {
   host: string;
   port: number;
   retryInterval: number;
+  connectTimeout: number;
   slaveId: number;
   addressOffset: SouthModbusSettingsAddressOffset;
   endianness: SouthModbusSettingsEndianness;
@@ -455,10 +456,11 @@ export interface SouthMQTTSettings {
   rejectUnauthorized: boolean;
   reconnectPeriod: number;
   connectTimeout: number;
+  maxNumberOfMessages: number;
+  flushMessageTimeout: number;
 }
 
 export interface SouthMSSQLSettings {
-  throttling: SouthMSSQLSettingsThrottling;
   host: string;
   port: number;
   connectionTimeout: number;
@@ -472,7 +474,6 @@ export interface SouthMSSQLSettings {
 }
 
 export interface SouthMySQLSettings {
-  throttling: SouthMySQLSettingsThrottling;
   host: string;
   port: number;
   connectionTimeout: number;
@@ -482,7 +483,6 @@ export interface SouthMySQLSettings {
 }
 
 export interface SouthODBCSettings {
-  throttling: SouthODBCSettingsThrottling;
   remoteAgent: boolean;
   agentUrl?: string;
   connectionTimeout: number;
@@ -493,14 +493,12 @@ export interface SouthODBCSettings {
 }
 
 export interface SouthOIAnalyticsSettings {
-  throttling: SouthOIAnalyticsSettingsThrottling;
   useOiaModule: boolean;
   timeout: number;
   specificSettings?: SouthOIAnalyticsSettingsSpecificSettings | null;
 }
 
 export interface SouthOLEDBSettings {
-  throttling: SouthOLEDBSettingsThrottling;
   agentUrl: string;
   connectionTimeout: number;
   retryInterval: number;
@@ -509,27 +507,26 @@ export interface SouthOLEDBSettings {
 }
 
 export interface SouthOPCSettings {
-  throttling: SouthOPCSettingsThrottling;
   agentUrl: string;
   retryInterval: number;
   host: string;
   serverName: string;
+  mode: string;
 }
 
 export interface SouthOPCUASettings {
-  throttling: SouthOPCUASettingsThrottling;
-  sharedConnection: boolean;
   url: string;
   keepSessionAlive: boolean;
   readTimeout: number;
   retryInterval: number;
+  maxNumberOfMessages: number;
+  flushMessageTimeout: number;
   securityMode: SouthOPCUASettingsSecurityMode;
   securityPolicy?: SouthOPCUASettingsSecurityPolicy | null;
   authentication: SouthOPCUASettingsAuthentication;
 }
 
 export interface SouthOracleSettings {
-  throttling: SouthOracleSettingsThrottling;
   thickMode: boolean;
   oracleClient?: string;
   host: string;
@@ -541,13 +538,11 @@ export interface SouthOracleSettings {
 }
 
 export interface SouthPISettings {
-  throttling: SouthPISettingsThrottling;
   agentUrl: string;
   retryInterval: number;
 }
 
 export interface SouthPostgreSQLSettings {
-  throttling: SouthPostgreSQLSettingsThrottling;
   host: string;
   port: number;
   connectionTimeout: number;
@@ -555,6 +550,7 @@ export interface SouthPostgreSQLSettings {
   requestTimeout: number;
   username: string | null;
   password: string | null;
+  sslMode: boolean;
 }
 
 export interface SouthSFTPSettings {
@@ -583,7 +579,6 @@ export interface SouthSlimsSettings {
 }
 
 export interface SouthSQLiteSettings {
-  throttling: SouthSQLiteSettingsThrottling;
   databasePath: string;
 }
 
@@ -603,7 +598,6 @@ export type SouthSettings =
   | SouthPISettings
   | SouthPostgreSQLSettings
   | SouthSFTPSettings
-  | SouthSlimsSettings
   | SouthSQLiteSettings;
 
 export interface SouthModbusItemSettingsData {
@@ -812,6 +806,9 @@ export interface SouthFolderScannerItemSettings {
   minAge: number;
   preserveFiles: boolean;
   ignoreModifiedDate?: boolean;
+  recursive: boolean;
+  maxFiles: number;
+  maxSize: number;
 }
 
 export interface SouthModbusItemSettings {

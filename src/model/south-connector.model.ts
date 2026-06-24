@@ -21,8 +21,12 @@ export interface SouthConnectorEntity<T extends SouthSettings, I extends SouthIt
 export interface SouthConnectorItemEntity<T extends SouthItemSettings> extends BaseEntity {
   name: string;
   enabled: boolean;
-  scanModeId: string;
+  scanModeId: string | null;
   settings: T;
+  maxReadInterval?: number | null;
+  readDelay?: number | null;
+  overlap?: number | null;
+  syncWithGroup?: number;
 }
 
 export interface SouthCache {

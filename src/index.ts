@@ -113,20 +113,21 @@ const LOG_DB_NAME = 'logs.db';
   await userMigration.migrate(config.engine.user, config.engine.password);
 
   const scanModeMigration = new ScanModesMigration(repositoryService, loggerService.logger!);
-  await scanModeMigration.migrate(config.engine.scanModes);
+  const scanModeMapping = scanModeMigration.migrate(config.engine.scanModes, config.south);
 
   const southMigration = new SouthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await southMigration.migrate(config.south);
+  const southIdMapping = await southMigration.migrate(config.south, scanModeMapping);
 
   const southCacheMigration = new SouthCacheMigration(repositoryService, loggerService.logger!);
   const SOUTH_WITH_CACHE = ['OPCUA_HA', 'OPCHDA', 'SQL', 'RestApi'];
   await southCacheMigration.migrate(
     config.south.filter(south => SOUTH_WITH_CACHE.includes(south.type)),
-    CACHE_FOLDER
+    CACHE_FOLDER,
+    southIdMapping
   );
 
   const northMigration = new NorthMigration(repositoryService, loggerService.logger!, encryptionService);
-  await northMigration.migrate(config.north, config.engine.proxies);
+  await northMigration.migrate(config.north, config.engine.proxies, southIdMapping);
 
   const dataFolderMigration = new DataFolderMigration(baseDir, loggerService.logger!);
   await dataFolderMigration.migrate();

@@ -47,7 +47,7 @@ export const deleteFile = async (filePath: string, logger: pino.Logger): Promise
 };
 
 const CHARACTER_SET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const RANDOM_LENGTH = 16;
+const RANDOM_LENGTH = 6;
 
 export const generateRandomId = (size = RANDOM_LENGTH): string => {
   let randomId = '';

@@ -55,12 +55,12 @@ export const convertLogLevel = (logLevel: LogLevelV2): LogLevel => {
 };
 
 export const convertCronTime = (cronTime: string): string => {
-  const cronParts = cronTime.trim().split(' ').reverse();
-
+  const parts = cronTime.trim().split(' ');
   // Add "every" if some fields are missing from the cron
-  for (let i = cronParts.length; i < 6; i++) {
-    cronParts.push('*');
+  for (let i = parts.length; i < 6; i++) {
+    parts.push('0');
   }
+  const cronParts = parts.reverse();
 
   // Reverse ms field of non-standard cron
   while (cronParts.length > 6) {
@@ -80,7 +80,7 @@ export const convertCronTime = (cronTime: string): string => {
     }
   });
 
-  return standardCron;
+  return standardCron.trim();
 };
 
 export const intervalToCron = (interval: number, repository: ScanModeRepository, logger: pino.Logger): string => {
@@ -143,25 +143,14 @@ const migrateFileWriter = (connector: NorthV2): NorthFileWriterSettings => {
 };
 
 const migrateOIAnalytics = async (
-  connector: NorthV2,
-  encryptionService: EncryptionService,
-  proxies: Array<ProxyV2>
+  _connector: NorthV2,
+  _encryptionService: EncryptionService,
+  _proxies: Array<ProxyV2>
 ): Promise<NorthOIAnalyticsSettings> => {
-  const proxyV2 = connector.settings.proxy ? proxies.find(proxy => proxy.name === connector.settings.proxy) : undefined;
   return {
-    useOiaModule: false,
-    timeout: 30,
-    compress: false,
-    specificSettings: {
-      host: connector.settings.host,
-      authentication: 'basic',
-      accessKey: connector.settings.authentication.key,
-      secretKey: connector.settings.authentication.secret
-        ? await encryptionService.convertCiphering(connector.settings.authentication.secret)
-        : '',
-      acceptUnauthorized: connector.settings.acceptUnauthorized,
-      ...(await migrateProxy(proxyV2, encryptionService))
-    }
+    useOiaModule: true,
+    timeout: 60,
+    compress: true
   };
 };
 
@@ -306,9 +295,9 @@ const migrateAds = (connector: SouthV2): SouthADSSettings => {
     netId: connector.settings.netId,
     port: connector.settings.port,
     routerAddress: connector.settings.routerAddress,
-    routerTcpPort: connector.settings.routerTcpPort,
+    routerTcpPort: connector.settings.routerTcpPort || 48898,
     clientAmsNetId: connector.settings.clientAmsNetId,
-    clientAdsPort: connector.settings.clientAdsPort,
+    clientAdsPort: connector.settings.clientAdsPort || 48899,
     retryInterval: connector.settings.retryInterval,
     plcName: connector.settings.plcName,
     enumAsText: toNewADSAsText(connector.settings.enumAsText),
@@ -339,11 +328,13 @@ const migrateModbus = (connector: SouthV2): SouthModbusSettings => {
     port: connector.settings.port,
     slaveId: connector.settings.slaveId,
     connectTimeout: 10_000,
+    networkTimeout: 15_000,
     retryInterval: connector.settings.retryInterval,
     addressOffset: toNewModbusAddressOffset(connector.settings.addressOffset),
     endianness: toNewModbusEndianness(connector.settings.endianness),
     swapBytesInWords: connector.settings.swapBytesInWords,
-    swapWordsInDWords: connector.settings.swapWordsInDWords
+    swapWordsInDWords: connector.settings.swapWordsInDWords,
+    batchQuery: false
   };
 };
 
@@ -602,10 +593,7 @@ const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettin
   };
 };
 
-const migrateRestApi = async (
-  connector: SouthV2,
-  encryptionService: EncryptionService
-): Promise<SouthOIAnalyticsSettings> => {
+const migrateRestApi = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOIAnalyticsSettings> => {
   switch (connector.settings.payloadParser) {
     case 'OIAnalytics time values':
       return {

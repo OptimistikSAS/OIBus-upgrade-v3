@@ -439,13 +439,16 @@ export interface SouthFolderScannerSettings {
 export interface SouthModbusSettings {
   host: string;
   port: number;
-  retryInterval: number;
   connectTimeout: number;
+  networkTimeout: number;
+  retryInterval: number;
   slaveId: number;
   addressOffset: SouthModbusSettingsAddressOffset;
   endianness: SouthModbusSettingsEndianness;
   swapBytesInWords: boolean;
   swapWordsInDWords: boolean;
+  batchQuery: boolean;
+  groupingGap?: number;
 }
 
 export interface SouthMQTTSettings {
@@ -522,7 +525,7 @@ export interface SouthOPCUASettings {
   maxNumberOfMessages: number;
   flushMessageTimeout: number;
   securityMode: SouthOPCUASettingsSecurityMode;
-  securityPolicy?: SouthOPCUASettingsSecurityPolicy | null;
+  securityPolicy?: SouthOPCUASettingsSecurityPolicy;
   authentication: SouthOPCUASettingsAuthentication;
 }
 

@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   release-please:
     name: 'Tag new version'
@@ -19,15 +23,10 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
-      - uses: google-github-actions/release-please-action@v3
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
         with:
           release-type: node
-      - name: Set outputs
-        if: ${{ steps.release.outputs.release_created }}
-        run: |
-          echo "release_created=steps.release.outputs.release_created" >> $GITHUB_OUTPUT
-          echo "tag_name=steps.release.outputs.tag_name" >> $GITHUB_OUTPUT
 
   build-binaries:
     needs: release-please
@@ -49,7 +48,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: package.json
+          node-version-file: .nvmrc
 
       - name: Install dependencies
         shell: bash

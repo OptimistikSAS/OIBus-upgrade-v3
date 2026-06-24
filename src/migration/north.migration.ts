@@ -39,21 +39,17 @@ export default class NorthMigration {
           type: convertNorthType(connector.type),
           enabled: connector.enabled,
           caching: {
-            scanModeId: intervalToCron(connector.caching.sendInterval, this.repositoryService.scanModeRepository, this.logger),
-            retryInterval: connector.caching.retryInterval,
-            retryCount: connector.caching.retryCount,
-            maxSize: connector.caching.maxSize,
-            oibusTimeValues: {
-              groupCount: connector.caching.groupCount,
-              maxSendCount: connector.caching.maxSendCount
-            },
-            rawFiles: {
-              sendFileImmediately: true,
-              archive: {
-                enabled: connector.caching.archive.enabled,
-                retentionDuration: connector.caching.archive.retentionDuration ?? 72
-              }
-            }
+            triggerSchedule: intervalToCron(connector.caching.sendInterval, this.repositoryService.scanModeRepository, this.logger),
+            triggerNumberOfElements: connector.caching.groupCount,
+            triggerNumberOfFiles: 1,
+            throttlingRunMinDelay: 200,
+            throttlingCacheMaxSize: connector.caching.maxSize,
+            throttlingMaxNumberOfElements: connector.caching.maxSendCount,
+            errorRetryInterval: connector.caching.retryInterval,
+            errorRetryCount: connector.caching.retryCount,
+            errorRetentionDuration: 0,
+            archiveEnabled: connector.caching.archive.enabled,
+            archiveRetentionDuration: connector.caching.archive.retentionDuration ?? 72
           },
           settings: await migrateNorthSettings(connector, this.encryptionService, this.logger, proxies),
           subscriptions

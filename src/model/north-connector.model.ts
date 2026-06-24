@@ -10,21 +10,17 @@ export interface NorthConnectorEntity<T extends NorthSettings> extends BaseEntit
   enabled: boolean;
   settings: T;
   caching: {
-    scanModeId: string;
-    retryInterval: number;
-    retryCount: number;
-    maxSize: number;
-    oibusTimeValues: {
-      groupCount: number;
-      maxSendCount: number;
-    };
-    rawFiles: {
-      sendFileImmediately: boolean;
-      archive: {
-        enabled: boolean;
-        retentionDuration: number;
-      };
-    };
+    triggerSchedule: string;
+    triggerNumberOfElements: number;
+    triggerNumberOfFiles: number;
+    throttlingRunMinDelay: number;
+    throttlingCacheMaxSize: number;
+    throttlingMaxNumberOfElements: number;
+    errorRetryInterval: number;
+    errorRetryCount: number;
+    errorRetentionDuration: number;
+    archiveEnabled: boolean;
+    archiveRetentionDuration: number;
   };
   subscriptions: Array<SouthConnectorEntityLight>;
 }

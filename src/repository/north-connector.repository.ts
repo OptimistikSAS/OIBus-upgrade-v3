@@ -1,9 +1,11 @@
 import { Database } from 'better-sqlite3';
 import { NorthConnectorEntity } from '../model/north-connector.model';
 import { NorthSettings } from '../model/north-settings.model';
+import { generateRandomId } from '../service/utils';
 
 const NORTH_CONNECTORS_TABLE = 'north_connectors';
-const SUBSCRIPTION_TABLE = 'subscription';
+const NORTH_TRANSFORMERS_TABLE = 'north_transformers';
+const TRANSFORMERS_TABLE = 'transformers';
 
 /**
  * Repository used for North connectors
@@ -15,9 +17,11 @@ export default class NorthConnectorRepository {
     const transaction = this.database.transaction(() => {
       const insertQuery =
         `INSERT INTO ${NORTH_CONNECTORS_TABLE} (id, name, type, description, enabled, settings, ` +
-        `caching_scan_mode_id, caching_group_count, caching_retry_interval, caching_retry_count, caching_max_send_count, ` +
-        `caching_send_file_immediately, caching_max_size, archive_enabled, archive_retention_duration) ` +
-        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+        `caching_trigger_schedule, caching_trigger_number_of_elements, caching_trigger_number_of_files, ` +
+        `caching_throttling_run_min_delay, caching_throttling_cache_max_size, caching_throttling_max_number_of_elements, ` +
+        `caching_error_retry_interval, caching_error_retry_count, caching_error_retention_duration, ` +
+        `caching_archive_enabled, caching_archive_retention_duration) ` +
+        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
       this.database
         .prepare(insertQuery)
         .run(
@@ -27,34 +31,33 @@ export default class NorthConnectorRepository {
           north.description,
           +north.enabled,
           JSON.stringify(north.settings),
-          north.caching.scanModeId,
-          north.caching.oibusTimeValues.groupCount,
-          north.caching.retryInterval,
-          north.caching.retryCount,
-          north.caching.oibusTimeValues.maxSendCount,
-          +north.caching.rawFiles.sendFileImmediately,
-          north.caching.maxSize,
-          +north.caching.rawFiles.archive.enabled,
-          north.caching.rawFiles.archive.retentionDuration
+          north.caching.triggerSchedule,
+          north.caching.triggerNumberOfElements,
+          north.caching.triggerNumberOfFiles,
+          north.caching.throttlingRunMinDelay,
+          north.caching.throttlingCacheMaxSize,
+          north.caching.throttlingMaxNumberOfElements,
+          north.caching.errorRetryInterval,
+          north.caching.errorRetryCount,
+          north.caching.errorRetentionDuration,
+          +north.caching.archiveEnabled,
+          north.caching.archiveRetentionDuration
         );
 
       if (north.subscriptions.length > 0) {
-        this.database
-          .prepare(
-            `DELETE FROM ${SUBSCRIPTION_TABLE} WHERE north_connector_id = ? AND south_connector_id NOT IN (${north.subscriptions
-              .map(() => '?')
-              .join(', ')});`
-          )
-          .run(
-            north.id,
-            north.subscriptions.map(subscription => subscription.id)
-          );
+        // In v3.8+, subscriptions are modelled as north_transformers linked to south connectors.
+        // Look up the built-in 'iso' transformer (created by OIBus migrations on first run).
+        const isoTransformer = this.database
+          .prepare(`SELECT id FROM ${TRANSFORMERS_TABLE} WHERE function_name = 'iso' LIMIT 1;`)
+          .get() as { id: string } | undefined;
 
-        const insert = this.database.prepare(
-          `INSERT OR IGNORE INTO ${SUBSCRIPTION_TABLE} (north_connector_id, south_connector_id) VALUES (?, ?);`
-        );
-        for (const subscription of north.subscriptions) {
-          insert.run(north.id, subscription.id);
+        if (isoTransformer) {
+          const insert = this.database.prepare(
+            `INSERT INTO ${NORTH_TRANSFORMERS_TABLE} (id, north_id, transformer_id, source_type, source_south_south_id) VALUES (?, ?, ?, ?, ?);`
+          );
+          for (const subscription of north.subscriptions) {
+            insert.run(generateRandomId(6), north.id, isoTransformer.id, 'south', subscription.id);
+          }
         }
       }
     });

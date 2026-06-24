@@ -35,7 +35,6 @@ import {
   SouthOracleSettings,
   SouthPostgreSQLSettings,
   SouthSettings,
-  SouthSlimsSettings,
   SouthSQLiteSettings
 } from '../model/south-settings.model';
 import { CsvCharacter } from '../model/types';
@@ -272,11 +271,11 @@ export const convertSouthType = (type: SouthTypeV2, settings: { payloadParser: s
     case 'RestApi':
       switch (settings.payloadParser) {
         case 'SLIMS':
-          return 'slims';
+          throw new Error('SLIMS south type was removed in OIBus v3.6.0');
         case 'OIAnalytics time values':
           return 'oianalytics';
         default:
-          throw new Error(`REST API with driver ${settings.payloadParser} unknown in V3`);
+          throw new Error(`REST API with payloadParser ${settings.payloadParser} unknown in V3`);
       }
     case 'SQL':
       switch (settings.driver) {
@@ -339,6 +338,7 @@ const migrateModbus = (connector: SouthV2): SouthModbusSettings => {
     host: connector.settings.host,
     port: connector.settings.port,
     slaveId: connector.settings.slaveId,
+    connectTimeout: 10_000,
     retryInterval: connector.settings.retryInterval,
     addressOffset: toNewModbusAddressOffset(connector.settings.addressOffset),
     endianness: toNewModbusEndianness(connector.settings.endianness),
@@ -373,6 +373,8 @@ const migrateSouthMQTT = async (connector: SouthV2, encryptionService: Encryptio
     rejectUnauthorized: connector.settings.rejectUnauthorized,
     reconnectPeriod: connector.settings.reconnectPeriod,
     connectTimeout: connector.settings.connectTimeout,
+    maxNumberOfMessages: 1_000,
+    flushMessageTimeout: 1_000,
     authentication: await migrateMQTTAuth(connector.settings, encryptionService)
   };
 };
@@ -401,32 +403,22 @@ const migrateMQTTAuth = async (
 
 const migrateOPCHDA = (connector: SouthV2): SouthOPCSettings => {
   return {
-    throttling: {
-      maxInstantPerItem: false,
-      maxReadInterval: connector.settings.maxReadInterval ?? 60,
-      readDelay: connector.settings.readIntervalDelay || 200,
-      overlap: connector.settings.overlap || 0
-    },
     agentUrl: 'http://ip-adress-or-host:2224',
     retryInterval: connector.settings.retryInterval,
     host: connector.settings.host,
-    serverName: connector.settings.serverName
+    serverName: connector.settings.serverName,
+    mode: 'hda'
   };
 };
 
 const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
-    throttling: {
-      maxInstantPerItem: false,
-      maxReadInterval: connector.settings.maxReadInterval ?? 60,
-      readDelay: connector.settings.readIntervalDelay || 200,
-      overlap: connector.settings.overlap || 0
-    },
-    sharedConnection: false,
     readTimeout: connector.settings.readTimeout || 15_000,
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
+    maxNumberOfMessages: 1_000,
+    flushMessageTimeout: 1_000,
     securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
     securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
@@ -435,17 +427,12 @@ const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionS
 
 const migrateOPCUAHA = async (connector: SouthV2, encryptionService: EncryptionService): Promise<SouthOPCUASettings> => {
   return {
-    throttling: {
-      maxInstantPerItem: false,
-      maxReadInterval: connector.settings.maxReadInterval ?? 60,
-      readDelay: connector.settings.readIntervalDelay || 200,
-      overlap: connector.settings.overlap || 0
-    },
-    sharedConnection: false,
     readTimeout: connector.settings.readTimeout || 15_000,
     url: connector.settings.url,
     keepSessionAlive: connector.settings.keepSessionAlive,
     retryInterval: connector.settings.retryInterval,
+    maxNumberOfMessages: 1_000,
+    flushMessageTimeout: 1_000,
     securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
     securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
     authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
@@ -540,11 +527,6 @@ const migrateSQL = async (
   switch (connector.settings.driver) {
     case 'mssql':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -558,11 +540,6 @@ const migrateSQL = async (
       };
     case 'mysql':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -572,26 +549,18 @@ const migrateSQL = async (
       };
     case 'postgresql':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
         username: connector.settings.username,
         password: connector.settings.password ? await encryptionService.convertCiphering(connector.settings.password) : '',
         connectionTimeout: connector.settings.connectionTimeout,
-        requestTimeout: connector.settings.requestTimeout
+        requestTimeout: connector.settings.requestTimeout,
+        sslMode: false
       };
     case 'oracle':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
+        thickMode: false,
         host: connector.settings.host,
         port: connector.settings.port,
         database: connector.settings.database,
@@ -601,20 +570,10 @@ const migrateSQL = async (
       };
     case 'sqlite':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         databasePath: connector.settings.databasePath
       };
     case 'odbc':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         remoteAgent: false,
         connectionString: `Driver=${connector.settings.odbcDriverPath};SERVER=${connector.settings.host},${
           connector.settings.port
@@ -633,11 +592,6 @@ const migrateSQL = async (
 
 const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettings> => {
   return {
-    throttling: {
-      maxReadInterval: connector.settings.maxReadInterval ?? 60,
-      readDelay: connector.settings.readIntervalDelay || 200,
-      overlap: connector.settings.overlap || 0
-    },
     remoteAgent: true,
     agentUrl: connector.settings.agentUrl,
     connectionString: connector.settings.connectionString,
@@ -651,15 +605,10 @@ const migrateRemoteODBCSQL = async (connector: SouthV2): Promise<SouthODBCSettin
 const migrateRestApi = async (
   connector: SouthV2,
   encryptionService: EncryptionService
-): Promise<SouthOIAnalyticsSettings | SouthSlimsSettings> => {
+): Promise<SouthOIAnalyticsSettings> => {
   switch (connector.settings.payloadParser) {
     case 'OIAnalytics time values':
       return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
         useOiaModule: false,
         timeout: 30,
         specificSettings: {
@@ -672,22 +621,9 @@ const migrateRestApi = async (
         }
       };
     case 'SLIMS':
-      return {
-        throttling: {
-          maxReadInterval: connector.settings.maxReadInterval ?? 60,
-          readDelay: connector.settings.readIntervalDelay || 200,
-          overlap: connector.settings.overlap || 0
-        },
-        url: `${connector.settings.protocol}://${connector.settings.host}`,
-        port: connector.settings.port,
-        username: connector.settings.authentication.key,
-        password: await encryptionService.convertCiphering(connector.settings.authentication.secret),
-        acceptUnauthorized: connector.settings.acceptSelfSigned,
-        timeout: 30,
-        ...(await migrateProxy(undefined, encryptionService))
-      };
+      throw new Error('SLIMS south type was removed in OIBus v3.6.0');
     default:
-      throw new Error(`REST API with driver ${connector.settings.driver} unknown in V3`);
+      throw new Error(`REST API with payloadParser ${connector.settings.payloadParser} unknown in V3`);
   }
 };
 
@@ -716,26 +652,10 @@ const migrateAdsItem = (connector: SouthV2, item: ItemV2): SouthADSItemSettings 
   };
 };
 
-const migrateSouthMQTTItem = (connector: SouthV2, item: ItemV2): SouthMQTTItemSettings => {
-  return {
-    topic: item.topic,
-    valueType: 'json',
-    jsonPayload: {
-      useArray: !!connector.settings.dataArrayPath,
-      dataArrayPath: connector.settings.dataArrayPath || '',
-      pointIdOrigin: connector.settings.nodeIdPath ? 'oibus' : 'payload',
-      pointIdPath: connector.settings.nodeIdPath || '',
-      valuePath: connector.settings.valuePath || '',
-      timestampOrigin: connector.settings.timestampOrigin,
-      timestampPayload: {
-        timestampPath: connector.settings.timestampPath || '',
-        timestampType: 'string',
-        timestampFormat: connector.settings.timestampFormat,
-        timezone: connector.settings.timestampTimezone
-      },
-      otherFields: connector.settings.qualityPath ? [{ name: 'quality', path: connector.settings.qualityPath }] : []
-    }
-  };
+const migrateSouthMQTTItem = (_connector: SouthV2, item: ItemV2): SouthMQTTItemSettings => {
+  // In v3.8.0, MQTT item settings were simplified to only contain the topic.
+  // The transformation logic (JSON payload parsing, timestamp extraction, etc.) was moved to custom transformers.
+  return { topic: item.topic } as unknown as SouthMQTTItemSettings;
 };
 
 const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {

@@ -35,10 +35,21 @@ export default class SouthConnectorRepository {
 
       if (south.items.length > 0) {
         const insert = this.database.prepare(
-          `INSERT INTO ${SOUTH_ITEMS_TABLE} (id, name, enabled, connector_id, scan_mode_id, settings) VALUES (?, ?, ?, ?, ?, ?);`
+          `INSERT INTO ${SOUTH_ITEMS_TABLE} (id, name, enabled, connector_id, scan_mode_id, settings, max_read_interval, read_delay, overlap, sync_with_group) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
         );
         for (const item of south.items) {
-          insert.run(item.id, item.name, +item.enabled, south.id, item.scanModeId, JSON.stringify(item.settings));
+          insert.run(
+            item.id,
+            item.name,
+            +item.enabled,
+            south.id,
+            item.scanModeId ?? null,
+            JSON.stringify(item.settings),
+            item.maxReadInterval ?? null,
+            item.readDelay ?? null,
+            item.overlap ?? null,
+            item.syncWithGroup ?? 0
+          );
         }
       }
     });

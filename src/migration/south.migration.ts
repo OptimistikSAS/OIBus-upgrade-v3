@@ -18,6 +18,13 @@ export default class SouthMigration {
     this.logger.info(`Migrating ${connectors.length} South connectors`);
     for (const connector of connectors) {
       this.logger.debug(`Migrating South "${connector.name}" of type ${connector.type}`);
+
+      // SLIMS was removed in OIBus v3.6.0
+      if (connector.type === 'RestApi' && connector.settings.payloadParser === 'SLIMS') {
+        this.logger.warn(`Skipping South "${connector.name}": SLIMS south type was removed in OIBus v3.6.0`);
+        continue;
+      }
+
       try {
         let items: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
         try {
@@ -48,6 +55,20 @@ export default class SouthMigration {
         } catch (error) {
           this.logger.error(`Error when migrating South item for connector "${JSON.stringify(connector.name)}": ${error}`);
         }
+
+        // For historian connectors (v3.8.0+), throttling was moved from connector settings to items
+        const historianTypes = ['OPCUA_HA', 'OPCUA_DA', 'OPCHDA', 'SQL', 'OdbcRemote', 'RestApi'];
+        if (historianTypes.includes(connector.type)) {
+          const maxReadInterval = connector.settings.maxReadInterval ?? 60;
+          const readDelay = connector.settings.readIntervalDelay || 200;
+          const overlap = connector.settings.overlap || 0;
+          for (const item of items) {
+            item.maxReadInterval = maxReadInterval;
+            item.readDelay = readDelay;
+            item.overlap = overlap;
+          }
+        }
+
         const command: SouthConnectorEntity<SouthSettings, SouthItemSettings> = {
           id: connector.id,
           name: connector.name,
@@ -106,7 +127,10 @@ export default class SouthMigration {
         regex: southConnector.settings.regex,
         minAge: southConnector.settings.minAge,
         preserveFiles: southConnector.settings.preserveFiles,
-        ignoreModifiedDate: southConnector.settings.ignoreModifiedDate
+        ignoreModifiedDate: southConnector.settings.ignoreModifiedDate,
+        recursive: false,
+        maxFiles: 0,
+        maxSize: 0
       }
     });
     return newItems;
@@ -350,42 +374,6 @@ export default class SouthMigration {
     }
 
     switch (southConnector.settings.payloadParser) {
-      case 'SLIMS':
-        newItems.push({
-          id: generateRandomId(6),
-          name: southConnector.name,
-          enabled: true,
-          scanModeId: scanMode.id,
-          settings: {
-            endpoint: southConnector.settings.endpoint,
-            queryParams: southConnector.settings.queryParams
-              ? southConnector.settings.queryParams.map((queryParam: { queryParamKey: string; queryParamValue: string }) => ({
-                  key: queryParam.queryParamKey,
-                  value: queryParam.queryParamValue
-                }))
-              : [],
-            body: southConnector.settings.body,
-            dateTimeFields: [
-              {
-                fieldName: southConnector.settings.timeColumn,
-                useAsReference: true,
-                type: 'string',
-                format: southConnector.settings.dateFormat,
-                timezone: southConnector.settings.timezone,
-                locale: 'en-US'
-              }
-            ],
-            serialization: {
-              type: 'csv',
-              filename: southConnector.settings.fileName,
-              delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
-              compression: southConnector.settings.compression
-            }
-          }
-        });
-        break;
       case 'OIAnalytics time values':
         newItems.push({
           id: generateRandomId(6),
@@ -412,7 +400,7 @@ export default class SouthMigration {
         });
         break;
       default:
-        throw new Error(`REST API with driver ${southConnector.settings.payloadParser} unknown in V3`);
+        throw new Error(`REST API with payloadParser ${southConnector.settings.payloadParser} unknown in V3`);
     }
     return newItems;
   };

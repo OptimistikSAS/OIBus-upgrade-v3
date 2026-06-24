@@ -1,46 +1,45 @@
 import { Database } from 'better-sqlite3';
-import { SouthCache } from '../model/south-connector.model';
-
-export const SOUTH_CACHE_TABLE = 'cache_history';
 
 /**
- * Repository used for South connector cache (Scan mode instant storage)
+ * Repository used for South connector cache (v3.8+ per-connector tables)
  */
 export default class SouthCacheRepository {
-  private readonly _database: Database;
-  constructor(database: Database) {
-    this._database = database;
+  constructor(private readonly database: Database) {}
+
+  /**
+   * Ensures the per-connector cache table exists (created lazily like the runtime does).
+   */
+  ensureTable(connectorId: string): void {
+    const tableName = this.tableName(connectorId);
+    this.database
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS "${tableName}" (` +
+          'item_id TEXT PRIMARY KEY, ' +
+          'group_id TEXT, ' +
+          'query_time TEXT, ' +
+          'value TEXT, ' +
+          'tracked_instant TEXT' +
+          ');'
+      )
+      .run();
   }
 
-  getSouthCache(southId: string, scanModeId: string, itemId: string): SouthCache | null {
-    const query = `SELECT south_id, scan_mode_id, item_id, max_instant FROM ${SOUTH_CACHE_TABLE} WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
-    const result = this._database.prepare(query).get(southId, scanModeId, itemId);
-    if (!result) return null;
-    return this.toSouthCache(result as Record<string, string>);
-  }
-
-  save(command: SouthCache): void {
-    const foundScanMode = this.getSouthCache(command.southId, command.scanModeId, command.itemId);
-    if (!foundScanMode) {
-      const insertQuery = `INSERT INTO ${SOUTH_CACHE_TABLE} (south_id, scan_mode_id, item_id, max_instant) VALUES (?, ?, ?, ?);`;
-      this._database.prepare(insertQuery).run(command.southId, command.scanModeId, command.itemId, command.maxInstant);
+  save(connectorId: string, itemId: string, trackedInstant: string): void {
+    this.ensureTable(connectorId);
+    const tableName = this.tableName(connectorId);
+    const existing = this.database.prepare(`SELECT item_id FROM "${tableName}" WHERE item_id = ?;`).get(itemId);
+    if (!existing) {
+      this.database
+        .prepare(`INSERT INTO "${tableName}" (item_id, group_id, query_time, value, tracked_instant) VALUES (?, NULL, NULL, NULL, ?);`)
+        .run(itemId, trackedInstant);
     } else {
-      const query = `UPDATE ${SOUTH_CACHE_TABLE} SET max_instant = ? WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
-      this._database.prepare(query).run(command.maxInstant, command.southId, command.scanModeId, command.itemId);
+      this.database
+        .prepare(`UPDATE "${tableName}" SET tracked_instant = ? WHERE item_id = ?;`)
+        .run(trackedInstant, itemId);
     }
   }
 
-  delete(southId: string, scanModeId: string, itemId: string): void {
-    const query = `DELETE FROM ${SOUTH_CACHE_TABLE} WHERE south_id = ? AND scan_mode_id = ? AND item_id = ?;`;
-    this._database.prepare(query).run(southId, scanModeId, itemId);
-  }
-
-  private toSouthCache(result: Record<string, string>): SouthCache {
-    return {
-      southId: result.south_id,
-      scanModeId: result.scan_mode_id,
-      itemId: result.item_id,
-      maxInstant: result.max_instant
-    };
+  private tableName(connectorId: string): string {
+    return `south_item_cache_${connectorId}`;
   }
 }

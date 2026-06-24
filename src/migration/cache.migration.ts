@@ -30,19 +30,16 @@ export default class SouthCacheMigration {
         const cacheEntries: Array<{ name: string; value: Instant }> = cacheDatabase
           .prepare(`SELECT name, value FROM cache WHERE name LIKE '%lastCompletedAt%';`)
           .all() as Array<{ name: string; value: Instant }>;
-        cacheEntries.forEach(entry => {
+
+        for (const entry of cacheEntries) {
           const maxInstant = DateTime.fromISO(entry.value).toUTC().toISO()!;
           const associatedScanMode = entry.name.split('-', 2);
           const foundScanMode = this.repositoryService.scanModeRepository.getByName(associatedScanMode[1]);
           if (foundScanMode && maxInstant) {
-            this.repositoryService.southCacheRepository.save({
-              southId: connector.id,
-              scanModeId: foundScanMode.id,
-              itemId: this.getAssociatedItemId(connector),
-              maxInstant
-            });
+            const itemId = this.getAssociatedItemId(connector);
+            this.repositoryService.southCacheRepository.save(connector.id, itemId, maxInstant);
           }
-        });
+        }
 
         cacheDatabase.close();
         await fs.unlink(cacheFile);
@@ -57,7 +54,7 @@ export default class SouthCacheMigration {
       case 'SQL':
       case 'RestApi': {
         const southItems = this.repositoryService.southConnectorRepository.findAllItemsForSouth(connector.id);
-        return southItems[0].id;
+        return southItems.length > 0 ? southItems[0].id : 'all';
       }
       default:
         return 'all';

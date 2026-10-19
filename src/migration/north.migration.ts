@@ -15,8 +15,13 @@ export default class NorthMigration {
     private readonly encryptionService: EncryptionService
   ) {}
 
-  async migrate(connectors: Array<NorthV2> = [], proxies: Array<ProxyV2> = [], southIdMapping = new Map<string, string>()): Promise<void> {
+  async migrate(
+    connectors: Array<NorthV2> = [],
+    proxies: Array<ProxyV2> = [],
+    southIdMapping = new Map<string, string>()
+  ): Promise<Map<string, string>> {
     this.logger.info(`Migrating ${connectors.length} North connectors`);
+    const idMapping = new Map<string, string>();
     for (const connector of connectors) {
       this.logger.trace(`Migrating North "${connector.name}"`);
       try {
@@ -57,9 +62,11 @@ export default class NorthMigration {
           subscriptions
         };
         this.repositoryService.northConnectorRepository.saveNorthConnector(command);
+        idMapping.set(connector.id, command.id);
       } catch (error) {
         this.logger.error(`Error when migrating North "${JSON.stringify(connector)}": ${error}`);
       }
     }
+    return idMapping;
   }
 }

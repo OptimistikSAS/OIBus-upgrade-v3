@@ -1,45 +1,39 @@
 import { Database } from 'better-sqlite3';
 
+const SOUTH_CACHE_TABLE = 'south_item_cache';
+
 /**
- * Repository used for South connector cache (v3.8+ per-connector tables)
+ * Repository used for South connector cache (v3.9+ single table shared by all connectors)
  */
 export default class SouthCacheRepository {
   constructor(private readonly database: Database) {}
 
   /**
-   * Ensures the per-connector cache table exists (created lazily like the runtime does).
+   * Save the cache of an item (not synchronized with a group, or connector not able to batch its items)
    */
-  ensureTable(connectorId: string): void {
-    const tableName = this.tableName(connectorId);
+  saveItem(southId: string, itemId: string, trackedInstant: string | null, value: unknown = null): void {
     this.database
       .prepare(
-        `CREATE TABLE IF NOT EXISTS "${tableName}" (` +
-          'item_id TEXT PRIMARY KEY, ' +
-          'group_id TEXT, ' +
-          'query_time TEXT, ' +
-          'value TEXT, ' +
-          'tracked_instant TEXT' +
-          ');'
+        `INSERT OR REPLACE INTO ${SOUTH_CACHE_TABLE} (south_id, item_id, group_id, query_time, value, tracked_instant) ` +
+          'VALUES (?, ?, NULL, NULL, ?, ?);'
       )
-      .run();
+      .run(southId, itemId, value !== null ? JSON.stringify(value) : null, trackedInstant);
   }
 
-  save(connectorId: string, itemId: string, trackedInstant: string): void {
-    this.ensureTable(connectorId);
-    const tableName = this.tableName(connectorId);
-    const existing = this.database.prepare(`SELECT item_id FROM "${tableName}" WHERE item_id = ?;`).get(itemId);
-    if (!existing) {
+  /**
+   * Save the cache shared by all the items of a synchronized group. As item_id is NULL, the primary key can not be used
+   * to upsert the row
+   */
+  saveGroup(southId: string, groupId: string, trackedInstant: string): void {
+    const result = this.database
+      .prepare(`UPDATE ${SOUTH_CACHE_TABLE} SET tracked_instant = ? WHERE south_id = ? AND group_id = ? AND item_id IS NULL;`)
+      .run(trackedInstant, southId, groupId);
+    if (result.changes === 0) {
       this.database
-        .prepare(`INSERT INTO "${tableName}" (item_id, group_id, query_time, value, tracked_instant) VALUES (?, NULL, NULL, NULL, ?);`)
-        .run(itemId, trackedInstant);
-    } else {
-      this.database
-        .prepare(`UPDATE "${tableName}" SET tracked_instant = ? WHERE item_id = ?;`)
-        .run(trackedInstant, itemId);
+        .prepare(
+          `INSERT INTO ${SOUTH_CACHE_TABLE} (south_id, item_id, group_id, query_time, value, tracked_instant) VALUES (?, NULL, ?, NULL, NULL, ?);`
+        )
+        .run(southId, groupId, trackedInstant);
     }
-  }
-
-  private tableName(connectorId: string): string {
-    return `south_item_cache_${connectorId}`;
   }
 }

@@ -138,7 +138,10 @@ const migrateFileWriter = (connector: NorthV2): NorthFileWriterSettings => {
   return {
     outputFolder: connector.settings.outputFolder,
     prefix: connector.settings.prefixFileName,
-    suffix: connector.settings.suffixFileName
+    suffix: connector.settings.suffixFileName,
+    username: null,
+    password: null,
+    domain: null
   };
 };
 
@@ -318,7 +321,10 @@ function toNewADSAsText(value: 'Text' | 'Integer'): 'text' | 'integer' {
 const migrateFolderScanner = (connector: SouthV2): SouthFolderScannerSettings => {
   return {
     inputFolder: connector.settings.inputFolder,
-    compression: connector.settings.compression
+    compression: connector.settings.compression,
+    username: null,
+    password: null,
+    domain: null
   };
 };
 
@@ -412,7 +418,8 @@ const migrateOPCUADA = async (connector: SouthV2, encryptionService: EncryptionS
     flushMessageTimeout: 1_000,
     securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
     securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
-    authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
+    authentication: await migrateOPCUAAuth(connector.settings, encryptionService),
+    maxParallelRun: 1
   };
 };
 
@@ -426,7 +433,8 @@ const migrateOPCUAHA = async (connector: SouthV2, encryptionService: EncryptionS
     flushMessageTimeout: 1_000,
     securityMode: toNewOPCUASecurityMode(connector.settings.securityMode),
     securityPolicy: toNewOPCUASecurityPolicy(connector.settings.securityPolicy),
-    authentication: await migrateOPCUAAuth(connector.settings, encryptionService)
+    authentication: await migrateOPCUAAuth(connector.settings, encryptionService),
+    maxParallelRun: 1
   };
 };
 
@@ -649,7 +657,8 @@ const migrateSouthMQTTItem = (_connector: SouthV2, item: ItemV2): SouthMQTTItemS
 const migrateOPCUADAItem = (connector: SouthV2, item: ItemV2): SouthOPCUAItemSettings => {
   return {
     nodeId: item.nodeId,
-    mode: 'da'
+    mode: 'da',
+    timestampOrigin: 'oibus'
   };
 };
 

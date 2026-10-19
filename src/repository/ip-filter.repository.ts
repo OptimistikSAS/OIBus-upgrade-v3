@@ -3,6 +3,7 @@ import { Database } from 'better-sqlite3';
 import { IPFilter } from '../model/ip-filter.model';
 
 const IP_FILTERS_TABLE = 'ip_filters';
+const CREATED_BY = 'system';
 
 /**
  * Repository used for ip filters (allow connection to OIBus from these IP addresses)
@@ -11,8 +12,8 @@ export default class IpFilterRepository {
   constructor(private readonly database: Database) {}
 
   create(command: Omit<IPFilter, 'id'>, id = generateRandomId(6)): IPFilter {
-    const insertQuery = `INSERT INTO ${IP_FILTERS_TABLE} (id, address, description) ` + `VALUES (?, ?, ?);`;
-    const result = this.database.prepare(insertQuery).run(id, command.address, command.description);
+    const insertQuery = `INSERT INTO ${IP_FILTERS_TABLE} (id, address, description, created_by, updated_by) VALUES (?, ?, ?, ?, ?);`;
+    const result = this.database.prepare(insertQuery).run(id, command.address, command.description, CREATED_BY, CREATED_BY);
     const query = `SELECT id, address, description FROM ${IP_FILTERS_TABLE} WHERE ROWID = ?;`;
     return this.toIPFilter(this.database.prepare(query).get(result.lastInsertRowid) as Record<string, string>);
   }

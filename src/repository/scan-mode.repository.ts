@@ -1,8 +1,10 @@
+import { DateTime } from 'luxon';
 import { generateRandomId } from '../service/utils';
 import { Database } from 'better-sqlite3';
 import { ScanMode } from '../model/scan-mode.model';
 
 const SCAN_MODES_TABLE = 'scan_modes';
+const CREATED_BY = 'system';
 
 /**
  * Repository used for scan modes (cron definitions)
@@ -22,8 +24,13 @@ export default class ScanModeRepository {
   }
 
   create(command: Omit<ScanMode, 'id'>, id = generateRandomId(6)): ScanMode {
-    const insertQuery = `INSERT INTO ${SCAN_MODES_TABLE} (id, name, description, cron) VALUES (?, ?, ?, ?);`;
-    const result = this.database.prepare(insertQuery).run(id, command.name, command.description, command.cron);
+    const now = DateTime.now().toUTC().toISO()!;
+    const insertQuery =
+      `INSERT INTO ${SCAN_MODES_TABLE} (id, name, description, cron, created_at, updated_at, created_by, updated_by) ` +
+      `VALUES (?, ?, ?, ?, ?, ?, ?, ?);`;
+    const result = this.database
+      .prepare(insertQuery)
+      .run(id, command.name, command.description, command.cron, now, now, CREATED_BY, CREATED_BY);
     const query = `SELECT id, name, description, cron FROM ${SCAN_MODES_TABLE} WHERE ROWID = ?;`;
     return this.toScanMode(this.database.prepare(query).get(result.lastInsertRowid) as Record<string, string>);
   }

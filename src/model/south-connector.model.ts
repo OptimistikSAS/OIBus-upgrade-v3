@@ -1,5 +1,5 @@
 import { SouthItemSettings, SouthSettings } from './south-settings.model';
-import { BaseEntity, Instant } from './types';
+import { BaseEntity } from './types';
 import { OIBusSouthType } from './engine.model';
 
 export interface SouthConnectorEntityLight extends BaseEntity {
@@ -16,6 +16,26 @@ export interface SouthConnectorEntity<T extends SouthSettings, I extends SouthIt
   enabled: boolean;
   settings: T;
   items: Array<SouthConnectorItemEntity<I>>;
+  groups: Array<SouthItemGroupEntity>;
+}
+
+export type SouthHistoryRecoveryStrategy = 'oldest' | 'newest';
+
+/**
+ * History settings shared by items and groups of history-capable connectors (v3.9.0+)
+ */
+export interface SouthHistorySettings {
+  maxReadInterval: number | null;
+  readDelay: number | null;
+  startTimeOffset: number | null;
+  endTimeOffset: number | null;
+  recoveryStrategy: SouthHistoryRecoveryStrategy | null;
+}
+
+export interface SouthItemGroupEntity extends BaseEntity, SouthHistorySettings {
+  name: string;
+  scanModeId: string;
+  itemIds: Array<string>;
 }
 
 export interface SouthConnectorItemEntity<T extends SouthItemSettings> extends BaseEntity {
@@ -23,15 +43,6 @@ export interface SouthConnectorItemEntity<T extends SouthItemSettings> extends B
   enabled: boolean;
   scanModeId: string | null;
   settings: T;
-  maxReadInterval?: number | null;
-  readDelay?: number | null;
-  overlap?: number | null;
-  syncWithGroup?: number;
-}
-
-export interface SouthCache {
-  southId: string;
-  scanModeId: string;
-  itemId: string;
-  maxInstant: Instant;
+  history: SouthHistorySettings | null;
+  syncWithGroup: boolean;
 }

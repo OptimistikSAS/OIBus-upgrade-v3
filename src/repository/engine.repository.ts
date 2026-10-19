@@ -1,52 +1,13 @@
-import { generateRandomId } from '../service/utils';
 import { Database } from 'better-sqlite3';
 import { EngineSettings } from '../model/engine.model';
-import { version } from '../../package.json';
 
 const ENGINES_TABLE = 'engines';
-
-const DEFAULT_ENGINE_SETTINGS: Omit<EngineSettings, 'id' | 'version' | 'launcherVersion'> = {
-  name: 'OIBus',
-  port: 2223,
-  proxyEnabled: false,
-  proxyPort: 9000,
-  logParameters: {
-    console: {
-      level: 'silent'
-    },
-    file: {
-      level: 'info',
-      maxFileSize: 50,
-      numberOfFiles: 5
-    },
-    database: {
-      level: 'info',
-      maxNumberOfLogs: 100_000
-    },
-    loki: {
-      level: 'silent',
-      interval: 60,
-      address: '',
-      username: '',
-      password: ''
-    },
-    oia: {
-      level: 'silent',
-      interval: 10
-    }
-  }
-};
 
 /**
  * Repository used for Engine settings
  */
 export default class EngineRepository {
-  constructor(
-    private readonly database: Database,
-    launcherVersion: string
-  ) {
-    this.createDefault(DEFAULT_ENGINE_SETTINGS, launcherVersion);
-  }
+  constructor(private readonly database: Database) {}
 
   get(): EngineSettings | null {
     const query =
@@ -86,43 +47,6 @@ export default class EngineRepository {
       .prepare(query)
       .run(
         command.name,
-        command.port,
-        +command.proxyEnabled,
-        command.proxyPort,
-        command.logParameters.console.level,
-        command.logParameters.file.level,
-        command.logParameters.file.maxFileSize,
-        command.logParameters.file.numberOfFiles,
-        command.logParameters.database.level,
-        command.logParameters.database.maxNumberOfLogs,
-        command.logParameters.loki.level,
-        command.logParameters.loki.interval,
-        command.logParameters.loki.address,
-        command.logParameters.loki.username,
-        command.logParameters.loki.password,
-        command.logParameters.oia.level,
-        command.logParameters.oia.interval
-      );
-  }
-
-  private createDefault(command: Omit<EngineSettings, 'id' | 'version' | 'launcherVersion'>, launcherVersion: string): void {
-    if (this.get()) {
-      return;
-    }
-
-    const query =
-      `INSERT INTO ${ENGINES_TABLE} (id, name, oibus_version, oibus_launcher_version, port, proxy_enabled, proxy_port,` +
-      'log_console_level, log_file_level, log_file_max_file_size, log_file_number_of_files, log_database_level, ' +
-      'log_database_max_number_of_logs, log_loki_level, log_loki_interval, log_loki_address, ' +
-      'log_loki_username, log_loki_password, log_oia_level, log_oia_interval) ' +
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);';
-    this.database
-      .prepare(query)
-      .run(
-        generateRandomId(),
-        command.name,
-        version,
-        launcherVersion,
         command.port,
         +command.proxyEnabled,
         command.proxyPort,

@@ -47,9 +47,9 @@ export default class ScanModesMigration {
   private collectUsedScanModeNames(southConnectors: Array<SouthV2>): Set<string> {
     const names = new Set<string>();
     for (const connector of southConnectors) {
-      if (connector.scanMode) names.add(connector.scanMode);
+      if (connector.scanMode && connector.scanMode !== 'listen') names.add(connector.scanMode);
       for (const point of connector.points ?? []) {
-        if (point.scanMode) names.add(point.scanMode);
+        if (point.scanMode && point.scanMode !== 'listen') names.add(point.scanMode);
       }
     }
     return names;

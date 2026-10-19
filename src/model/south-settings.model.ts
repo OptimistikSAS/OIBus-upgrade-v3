@@ -434,6 +434,9 @@ export interface SouthADSSettings {
 export interface SouthFolderScannerSettings {
   inputFolder: string;
   compression: boolean;
+  username: string | null;
+  password: string | null;
+  domain: string | null;
 }
 
 export interface SouthModbusSettings {
@@ -527,6 +530,7 @@ export interface SouthOPCUASettings {
   securityMode: SouthOPCUASettingsSecurityMode;
   securityPolicy?: SouthOPCUASettingsSecurityPolicy;
   authentication: SouthOPCUASettingsAuthentication;
+  maxParallelRun: number;
 }
 
 export interface SouthOracleSettings {
@@ -867,6 +871,7 @@ export interface SouthOPCUAItemSettings {
   nodeId: string;
   mode: SouthOPCUAItemSettingsMode;
   haMode?: SouthOPCUAItemSettingsHaMode | null;
+  timestampOrigin?: 'oibus' | 'point' | 'server';
 }
 
 export interface SouthOracleItemSettings {

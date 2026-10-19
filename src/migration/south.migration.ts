@@ -3,10 +3,34 @@ import pino from 'pino';
 import { SouthV2 } from '../model/config.model';
 import EncryptionService from '../service/encryption.service';
 import { convertSouthType, migrateDelimiter, migrateItemSettings, migrateSouthSettings } from './utils';
-import { SouthConnectorEntity, SouthConnectorItemEntity } from '../model/south-connector.model';
+import { SouthConnectorEntity, SouthConnectorItemEntity, SouthHistorySettings, SouthItemGroupEntity } from '../model/south-connector.model';
 import { SouthItemSettings, SouthSettings } from '../model/south-settings.model';
 import { generateRandomId } from '../service/utils';
 import { ScanMode } from '../model/scan-mode.model';
+import { OIBusSouthType } from '../model/engine.model';
+
+type MigratedItem = Omit<SouthConnectorItemEntity<SouthItemSettings>, 'history' | 'syncWithGroup'>;
+
+// South types supporting history queries in OIBus 3.9 (see each south manifest `modes.history`)
+const HISTORY_SOUTH_TYPES: Array<OIBusSouthType> = [
+  'mssql',
+  'mysql',
+  'odbc',
+  'oianalytics',
+  'oledb',
+  'opc',
+  'opcua',
+  'oracle',
+  'osisoft-pi',
+  'postgresql',
+  'sqlite'
+];
+// South types whose items are gathered into groups, as OIBus does when migrating its own connectors to 3.8
+const GROUPED_SOUTH_TYPES: Array<OIBusSouthType> = ['ads', 'modbus', 'opc', 'opcua'];
+const DEFAULT_MAX_READ_INTERVAL = 3600;
+const DEFAULT_READ_DELAY = 200;
+const DEFAULT_OUTPUT_TIMESTAMP_FORMAT = 'yyyy-MM-dd HH:mm:ss.SSS';
+const DEFAULT_OUTPUT_TIMEZONE = 'Europe/Paris';
 
 export default class SouthMigration {
   constructor(
@@ -32,7 +56,8 @@ export default class SouthMigration {
       }
 
       try {
-        let items: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+        const type = convertSouthType(connector.type, connector.settings);
+        let items: Array<MigratedItem> = [];
         try {
           switch (connector.type) {
             case 'ADS':
@@ -62,21 +87,8 @@ export default class SouthMigration {
           this.logger.error(`Error when migrating South item for connector "${JSON.stringify(connector.name)}": ${error}`);
         }
 
-        // For historian connectors (v3.8.0+), throttling was moved from connector settings to items
-        const historianTypes = ['OPCUA_HA', 'OPCUA_DA', 'OPCHDA', 'SQL', 'OdbcRemote', 'RestApi'];
-        if (historianTypes.includes(connector.type)) {
-          const maxReadInterval = connector.settings.maxReadInterval ?? 60;
-          const readDelay = connector.settings.readIntervalDelay || 200;
-          const overlap = connector.settings.overlap || 0;
-          for (const item of items) {
-            item.maxReadInterval = maxReadInterval;
-            item.readDelay = readDelay;
-            item.overlap = overlap;
-          }
-        }
-
         const seenNames = new Set<string>();
-        const deduplicatedItems: typeof items = [];
+        const deduplicatedItems: Array<MigratedItem> = [];
         for (const item of items) {
           if (seenNames.has(item.name)) {
             this.logger.warn(`Skipping duplicate item name "${item.name}" for South connector "${connector.name}"`);
@@ -86,6 +98,16 @@ export default class SouthMigration {
           }
         }
 
+        // Throttling settings moved from the connector to its items in v3.8.0, and overlap was replaced by
+        // startTimeOffset / endTimeOffset / recoveryStrategy in v3.9.0
+        const history = HISTORY_SOUTH_TYPES.includes(type) ? this.migrateHistorySettings(connector) : null;
+        const southItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = deduplicatedItems.map(item => ({
+          ...item,
+          history: history ? { ...history } : null,
+          syncWithGroup: false
+        }));
+        const groups = GROUPED_SOUTH_TYPES.includes(type) ? this.groupItems(connector.name, southItems, history) : [];
+
         const newId = generateRandomId();
         idMapping.set(connector.id, newId);
 
@@ -93,10 +115,11 @@ export default class SouthMigration {
           id: newId,
           name: connector.name,
           description: '',
-          type: convertSouthType(connector.type, connector.settings),
+          type,
           enabled: connector.enabled,
           settings: await migrateSouthSettings(connector, this.encryptionService, this.logger),
-          items: deduplicatedItems
+          items: southItems,
+          groups
         };
         this.repositoryService.southConnectorRepository.saveSouthConnector(command);
       } catch (error) {
@@ -106,11 +129,60 @@ export default class SouthMigration {
     return idMapping;
   }
 
-  migratePoints = async (
-    southConnector: SouthV2,
-    scanModeMapping: Map<string, ScanMode>
-  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
-    const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+  private migrateHistorySettings(connector: SouthV2): SouthHistorySettings {
+    const overlap = connector.settings.overlap || 0;
+    return {
+      maxReadInterval: connector.settings.maxReadInterval ?? DEFAULT_MAX_READ_INTERVAL,
+      readDelay: connector.settings.readIntervalDelay || DEFAULT_READ_DELAY,
+      startTimeOffset: overlap ? -overlap : 0,
+      endTimeOffset: 0,
+      recoveryStrategy: 'oldest'
+    };
+  }
+
+  /**
+   * Gather items sharing the same scan mode into groups, so that they are requested together
+   * (as v2 did with its scan groups). Grouped items are synchronized with their group.
+   */
+  private groupItems(
+    connectorName: string,
+    items: Array<SouthConnectorItemEntity<SouthItemSettings>>,
+    history: SouthHistorySettings | null
+  ): Array<SouthItemGroupEntity> {
+    const itemsByScanMode = new Map<string, Array<SouthConnectorItemEntity<SouthItemSettings>>>();
+    for (const item of items) {
+      // Subscription items are not polled, there is nothing to group
+      if (!item.scanModeId || item.scanModeId === 'subscription') continue;
+      if (!itemsByScanMode.has(item.scanModeId)) {
+        itemsByScanMode.set(item.scanModeId, []);
+      }
+      itemsByScanMode.get(item.scanModeId)!.push(item);
+    }
+
+    const groups: Array<SouthItemGroupEntity> = [];
+    let groupIndex = 1;
+    for (const [scanModeId, groupItems] of itemsByScanMode) {
+      groups.push({
+        id: generateRandomId(),
+        name: itemsByScanMode.size > 1 ? `${connectorName} ${groupIndex}` : connectorName,
+        scanModeId,
+        maxReadInterval: history?.maxReadInterval ?? null,
+        readDelay: history?.readDelay ?? null,
+        startTimeOffset: history?.startTimeOffset ?? null,
+        endTimeOffset: history?.endTimeOffset ?? null,
+        recoveryStrategy: history?.recoveryStrategy ?? null,
+        itemIds: groupItems.map(item => item.id)
+      });
+      for (const item of groupItems) {
+        item.syncWithGroup = true;
+      }
+      groupIndex++;
+    }
+    return groups;
+  }
+
+  migratePoints = async (southConnector: SouthV2, scanModeMapping: Map<string, ScanMode>): Promise<Array<MigratedItem>> => {
+    const newItems: Array<MigratedItem> = [];
     const items = southConnector.points;
     this.logger.info(`Migrating ${items.length} items for South "${southConnector.name}" ($${southConnector.id})`);
     for (const item of items) {
@@ -135,11 +207,8 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createFolderScannerItem = async (
-    southConnector: SouthV2,
-    scanModeMapping: Map<string, ScanMode>
-  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
-    const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+  createFolderScannerItem = async (southConnector: SouthV2, scanModeMapping: Map<string, ScanMode>): Promise<Array<MigratedItem>> => {
+    const newItems: Array<MigratedItem> = [];
     const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
@@ -163,11 +232,8 @@ export default class SouthMigration {
     return newItems;
   };
 
-  createSQLItem = async (
-    southConnector: SouthV2,
-    scanModeMapping: Map<string, ScanMode>
-  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
-    const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+  createSQLItem = async (southConnector: SouthV2, scanModeMapping: Map<string, ScanMode>): Promise<Array<MigratedItem>> => {
+    const newItems: Array<MigratedItem> = [];
     const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
@@ -197,8 +263,8 @@ export default class SouthMigration {
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -227,8 +293,8 @@ export default class SouthMigration {
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -256,8 +322,8 @@ export default class SouthMigration {
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -286,8 +352,8 @@ export default class SouthMigration {
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -356,8 +422,8 @@ WHERE TimeStamp IS NOT NULL
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -386,8 +452,8 @@ WHERE TimeStamp IS NOT NULL
               type: 'csv',
               filename: southConnector.settings.filename,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }
@@ -399,11 +465,8 @@ WHERE TimeStamp IS NOT NULL
     return newItems;
   };
 
-  createODBCItem = async (
-    southConnector: SouthV2,
-    scanModeMapping: Map<string, ScanMode>
-  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
-    const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+  createODBCItem = async (southConnector: SouthV2, scanModeMapping: Map<string, ScanMode>): Promise<Array<MigratedItem>> => {
+    const newItems: Array<MigratedItem> = [];
     const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
@@ -431,8 +494,8 @@ WHERE TimeStamp IS NOT NULL
           type: 'csv',
           filename: southConnector.settings.filename,
           delimiter: migrateDelimiter(southConnector.settings.delimiter),
-          outputTimestampFormat: southConnector.settings.outputTimestampFormat,
-          outputTimezone: southConnector.settings.outputTimezone,
+          outputTimestampFormat: southConnector.settings.outputTimestampFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+          outputTimezone: southConnector.settings.outputTimezone || DEFAULT_OUTPUT_TIMEZONE,
           compression: southConnector.settings.compression
         }
       }
@@ -440,11 +503,8 @@ WHERE TimeStamp IS NOT NULL
     return newItems;
   };
 
-  createRestApiItem = async (
-    southConnector: SouthV2,
-    scanModeMapping: Map<string, ScanMode>
-  ): Promise<Array<SouthConnectorItemEntity<SouthItemSettings>>> => {
-    const newItems: Array<SouthConnectorItemEntity<SouthItemSettings>> = [];
+  createRestApiItem = async (southConnector: SouthV2, scanModeMapping: Map<string, ScanMode>): Promise<Array<MigratedItem>> => {
+    const newItems: Array<MigratedItem> = [];
     const scanMode = this.resolveScanMode(southConnector.scanMode, scanModeMapping);
     if (!scanMode) {
       this.logger.error(`Could not find scanMode ${southConnector.scanMode}`);
@@ -470,8 +530,8 @@ WHERE TimeStamp IS NOT NULL
               type: 'csv',
               filename: southConnector.settings.fileName,
               delimiter: migrateDelimiter(southConnector.settings.delimiter),
-              outputTimestampFormat: southConnector.settings.dateFormat,
-              outputTimezone: southConnector.settings.timezone,
+              outputTimestampFormat: southConnector.settings.dateFormat || DEFAULT_OUTPUT_TIMESTAMP_FORMAT,
+              outputTimezone: southConnector.settings.timezone || DEFAULT_OUTPUT_TIMEZONE,
               compression: southConnector.settings.compression
             }
           }

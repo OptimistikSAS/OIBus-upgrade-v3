@@ -3,6 +3,8 @@ import pino from 'pino';
 import EncryptionService from '../service/encryption.service';
 import { User } from '../model/user.model';
 
+const DEFAULT_V3_LOGIN = 'admin';
+
 export default class UserMigration {
   constructor(
     private readonly repositoryService: RepositoryService,
@@ -13,11 +15,6 @@ export default class UserMigration {
   async migrate(user: string, password: string): Promise<void> {
     this.logger.info(`Migrating OIBus user "${user}"`);
     try {
-      const adminUser = this.repositoryService.userRepository.findByLogin(user);
-      if (!adminUser) {
-        this.logger.error(`Admin user not found in V3 database. V2 admin not migrated`);
-        return;
-      }
       const command: Omit<User, 'id'> = {
         login: user,
         firstName: '',
@@ -26,11 +23,16 @@ export default class UserMigration {
         language: 'en',
         timezone: 'Europe/Paris'
       };
-      this.repositoryService.userRepository.update(adminUser.id, command);
-      await this.repositoryService.userRepository.updatePassword(
-        adminUser.id,
-        password ? await this.encryptionService.legacyDecryptText(password) : 'pass'
-      );
+      const decryptedPassword = password ? await this.encryptionService.legacyDecryptText(password) : 'pass';
+      // The v2 user replaces the default admin user created by OIBus v3 on its first start
+      const existingUser =
+        this.repositoryService.userRepository.findByLogin(user) ?? this.repositoryService.userRepository.findByLogin(DEFAULT_V3_LOGIN);
+      if (existingUser) {
+        this.repositoryService.userRepository.update(existingUser.id, command);
+        await this.repositoryService.userRepository.updatePassword(existingUser.id, decryptedPassword);
+      } else {
+        await this.repositoryService.userRepository.create(command, decryptedPassword);
+      }
     } catch (error) {
       this.logger.error(`Error when migrating user "${user}": ${error}`);
     }

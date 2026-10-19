@@ -6,6 +6,7 @@ import { generateRandomId } from '../service/utils';
 const NORTH_CONNECTORS_TABLE = 'north_connectors';
 const NORTH_TRANSFORMERS_TABLE = 'north_transformers';
 const TRANSFORMERS_TABLE = 'transformers';
+const CREATED_BY = 'system';
 
 /**
  * Repository used for North connectors
@@ -20,8 +21,8 @@ export default class NorthConnectorRepository {
         `caching_trigger_schedule, caching_trigger_number_of_elements, caching_trigger_number_of_files, ` +
         `caching_throttling_run_min_delay, caching_throttling_cache_max_size, caching_throttling_max_number_of_elements, ` +
         `caching_error_retry_interval, caching_error_retry_count, caching_error_retention_duration, ` +
-        `caching_archive_enabled, caching_archive_retention_duration) ` +
-        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
+        `caching_archive_enabled, caching_archive_retention_duration, created_by, updated_by) ` +
+        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`;
       this.database
         .prepare(insertQuery)
         .run(
@@ -41,15 +42,17 @@ export default class NorthConnectorRepository {
           north.caching.errorRetryCount,
           north.caching.errorRetentionDuration,
           +north.caching.archiveEnabled,
-          north.caching.archiveRetentionDuration
+          north.caching.archiveRetentionDuration,
+          CREATED_BY,
+          CREATED_BY
         );
 
       if (north.subscriptions.length > 0) {
         // In v3.8+, subscriptions are modelled as north_transformers linked to south connectors.
         // Look up the built-in 'iso' transformer (created by OIBus migrations on first run).
-        const isoTransformer = this.database
-          .prepare(`SELECT id FROM ${TRANSFORMERS_TABLE} WHERE function_name = 'iso' LIMIT 1;`)
-          .get() as { id: string } | undefined;
+        const isoTransformer = this.database.prepare(`SELECT id FROM ${TRANSFORMERS_TABLE} WHERE function_name = 'iso' LIMIT 1;`).get() as
+          | { id: string }
+          | undefined;
 
         if (isoTransformer) {
           const insert = this.database.prepare(

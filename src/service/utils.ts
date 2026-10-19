@@ -46,6 +46,16 @@ export const deleteFile = async (filePath: string, logger: pino.Logger): Promise
   }
 };
 
+/**
+ * The upgrade tool writes into the database of a running OIBus. It supports the targeted version and its next patches,
+ * as long as they do not change the database
+ */
+export const isSupportedOIBusVersion = (version: string, targetVersion: string): boolean => {
+  const [major, minor, patch] = version.split(/[.-]/).map(part => parseInt(part));
+  const [targetMajor, targetMinor, targetPatch] = targetVersion.split('.').map(part => parseInt(part));
+  return major === targetMajor && minor === targetMinor && patch >= targetPatch;
+};
+
 const CHARACTER_SET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const RANDOM_LENGTH = 6;
 

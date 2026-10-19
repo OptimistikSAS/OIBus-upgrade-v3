@@ -68,6 +68,9 @@ export interface NorthFileWriterSettings {
   outputFolder: string;
   prefix: string | null;
   suffix: string | null;
+  username: string | null;
+  password: string | null;
+  domain: string | null;
 }
 
 export interface NorthOIAnalyticsSettings {
